@@ -102,8 +102,27 @@ export function CartItem({
       {/* Desktop Layout */}
       <div className="hidden lg:flex items-center gap-4">
         {/* Product Thumbnail */}
-        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-[#FFF8F0] to-[#FFE4C4] flex items-center justify-center flex-shrink-0">
-          <span className="text-3xl">{image || '🍬'}</span>
+        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-[#FFF8F0] to-[#FFE4C4] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+          {image && (image.startsWith('http://') || image.startsWith('https://')) ? (
+            <img
+              src={image}
+              alt={name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to emoji if image fails to load
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const parent = target.parentElement
+                if (parent) {
+                  const fallback = parent.querySelector('.fallback-emoji') as HTMLElement
+                  if (fallback) fallback.style.display = 'flex'
+                }
+              }}
+            />
+          ) : null}
+          <span className={`text-3xl fallback-emoji ${image && (image.startsWith('http://') || image.startsWith('https://')) ? 'hidden' : 'flex'}`}>
+            {image && !image.startsWith('http') ? image : '🍬'}
+          </span>
         </div>
 
         {/* Product Info */}

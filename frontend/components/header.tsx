@@ -35,7 +35,7 @@ export default function Header() {
                   <span className="text-white text-xl font-bold" style={{ fontFamily: 'cursive' }}>S</span>
                 </div>
               </div>
-            </Link>
+          </Link>
 
             {/* Brand Title */}
             <h1 className="text-xl lg:text-2xl font-bold text-[#C41E3A] leading-tight whitespace-nowrap">
