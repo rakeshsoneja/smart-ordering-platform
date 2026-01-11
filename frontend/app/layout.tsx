@@ -3,7 +3,7 @@ import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
 import Header from '@/components/header'
 import Footer from '@/components/footer'
-import BottomNavigation from '@/components/bottomNavigation'
+import BottomNavWrapper from '@/components/bottomNavWrapper'
 import { Providers } from './providers'
 import { appConfig } from '@/lib/config'
 
@@ -49,7 +49,7 @@ export default function RootLayout({
               {children}
               <Footer />
             </main>
-            <BottomNavigation />
+            <BottomNavWrapper />
           </div>
         </Providers>
       </body>

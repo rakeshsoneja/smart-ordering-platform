@@ -108,13 +108,35 @@ const getOrdersByCustomerPhone = async (customerPhone) => {
   return result.rows;
 };
 
+// Get all orders (for admin)
+// CRUD mapping: READ - Get all orders
+const getAllOrders = async (filters = {}) => {
+  let selectQuery = 'SELECT * FROM orders WHERE 1=1';
+  const values = [];
+  let paramIndex = 1;
+
+  if (filters.status) {
+    selectQuery += ` AND status = $${paramIndex}`;
+    values.push(filters.status);
+    paramIndex++;
+  }
+
+  selectQuery += ' ORDER BY created_at DESC'; // Default sort: newest first
+
+  const result = await query(selectQuery, values);
+  return result.rows;
+};
+
 module.exports = {
   createOrder,
   getOrderById,
   getOrderByRazorpayOrderId,
   updateOrderStatus,
   getOrdersByCustomerPhone,
+  getAllOrders,
 };
+
+
 
 
 

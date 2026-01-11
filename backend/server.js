@@ -9,6 +9,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const productRoutes = require('./routes/productRoutes');
 const adminProductRoutes = require('./routes/adminProductRoutes');
+const adminOrderRoutes = require('./routes/adminOrderRoutes');
 
 /**
  * Express Server Setup
@@ -26,7 +27,7 @@ const corsOptions = {
     ? (process.env.FRONTEND_URL || 'http://localhost:3000')
     : true, // Allow all origins in development for mobile testing
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
@@ -51,6 +52,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
+app.use('/api/admin/orders', adminOrderRoutes);
 
 // 404 handler
 app.use((req, res) => {
