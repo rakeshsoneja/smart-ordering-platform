@@ -10,7 +10,11 @@ export default function OrderItemsModal({ order, onClose }: OrderItemsModalProps
     ? JSON.parse(order.cartItems) 
     : order.cartItems
 
-  const totalAmount = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
+  const totalAmount = cartItems.reduce((sum: number, item: any) => {
+    const price = Number(item.price) || 0
+    const quantity = Number(item.quantity) || 0
+    return sum + (price * quantity)
+  }, 0)
 
   return (
     <div 
@@ -40,10 +44,13 @@ export default function OrderItemsModal({ order, onClose }: OrderItemsModalProps
           {/* Order Items - Similar to cart screen layout */}
           <div className="space-y-2 mb-4">
             {cartItems.map((item: any, index: number) => {
-              const itemTotal = item.price * item.quantity
+              const price = Number(item.price) || 0
+              const quantity = Number(item.quantity) || 0
+              const itemTotal = price * quantity
+              const unitValue = item.unitValue || 1
               const unitLabel = item.unit === 'pc' 
-                ? `${item.unitValue} ${item.unitValue === 1 ? 'pc' : 'pcs'}`
-                : `${item.unitValue}g`
+                ? `${unitValue} ${unitValue === 1 ? 'pc' : 'pcs'}`
+                : `${unitValue}g`
               
               return (
                 <div 
@@ -52,9 +59,9 @@ export default function OrderItemsModal({ order, onClose }: OrderItemsModalProps
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-800 mb-0.5 text-sm sm:text-base">
-                      {item.name} ({unitLabel})
+                      {item.name || 'Unknown Item'} ({unitLabel})
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-600">Quantity: {item.quantity}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Quantity: {quantity}</p>
                   </div>
                   <p className="font-semibold text-gray-800 text-sm sm:text-base ml-4">
                     ₹ {itemTotal.toFixed(2)}
