@@ -9,7 +9,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const productRoutes = require('./routes/productRoutes');
 const adminProductRoutes = require('./routes/adminProductRoutes');
-const adminOrderRoutes = require('./routes/adminOrderRoutes');
+const seedProducts = require('./database/seedProducts');
 
 /**
  * Express Server Setup
@@ -27,7 +27,7 @@ const corsOptions = {
     ? (process.env.FRONTEND_URL || 'http://localhost:3000')
     : true, // Allow all origins in development for mobile testing
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
@@ -52,7 +52,6 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
-app.use('/api/admin/orders', adminOrderRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -64,6 +63,16 @@ app.use((req, res) => {
 
 // Error handler (must be last)
 app.use(errorHandler);
+
+// Seed products on startup (non-blocking)
+seedProducts()
+  .then(() => {
+    console.log('✅ Product seeding completed');
+  })
+  .catch((error) => {
+    // Don't block server startup if seeding fails
+    console.warn('⚠️  Product seeding failed (server will continue):', error.message);
+  });
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
