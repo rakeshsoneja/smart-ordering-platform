@@ -9,6 +9,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const productRoutes = require('./routes/productRoutes');
 const adminProductRoutes = require('./routes/adminProductRoutes');
+const initSchema = require('./database/initSchema');
 const seedProducts = require('./database/seedProducts');
 
 /**
@@ -64,15 +65,17 @@ app.use((req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Seed products on startup (non-blocking)
-seedProducts()
-  .then(() => {
-    console.log('✅ Product seeding completed');
-  })
-  .catch((error) => {
-    // Don't block server startup if seeding fails
-    console.warn('⚠️  Product seeding failed (server will continue):', error.message);
-  });
+// Initialize database schema and seed products on startup (non-blocking)
+(async () => {
+  try {
+    await initSchema();
+    await seedProducts();
+    console.log('✅ Database initialization completed');
+  } catch (error) {
+    // Don't block server startup if initialization fails
+    console.warn('⚠️  Database initialization failed (server will continue):', error.message);
+  }
+})();
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
