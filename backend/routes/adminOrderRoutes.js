@@ -19,20 +19,23 @@ router.get('/', async (req, res, next) => {
 
     res.json({
       success: true,
-      orders: orders.map(order => ({
-        id: order.id,
-        customerName: order.customer_name,
-        customerPhone: order.customer_phone,
-        deliveryAddress: order.delivery_address,
-        cartItems: order.cart_items,
-        amount: parseFloat(order.amount),
-        paymentMode: order.payment_mode,
-        status: order.status,
-        razorpayOrderId: order.razorpay_order_id,
-        razorpayPaymentId: order.razorpay_payment_id,
-        createdAt: order.created_at,
-        updatedAt: order.updated_at,
-      })),
+      orders: orders.map(order => {
+        const amount = order.amount != null ? parseFloat(order.amount) : 0
+        return {
+          id: order.id,
+          customerName: order.customer_name,
+          customerPhone: order.customer_phone,
+          deliveryAddress: order.delivery_address,
+          cartItems: order.cart_items,
+          amount: isNaN(amount) ? 0 : amount,
+          paymentMode: order.payment_mode,
+          status: order.status,
+          razorpayOrderId: order.razorpay_order_id,
+          razorpayPaymentId: order.razorpay_payment_id,
+          createdAt: order.created_at,
+          updatedAt: order.updated_at,
+        }
+      }),
       total: orders.length,
     });
   } catch (error) {
@@ -64,6 +67,7 @@ router.get('/:id', async (req, res, next) => {
       });
     }
 
+    const amount = order.amount != null ? parseFloat(order.amount) : 0
     res.json({
       success: true,
       order: {
@@ -72,7 +76,7 @@ router.get('/:id', async (req, res, next) => {
         customerPhone: order.customer_phone,
         deliveryAddress: order.delivery_address,
         cartItems: order.cart_items,
-        amount: parseFloat(order.amount),
+        amount: isNaN(amount) ? 0 : amount,
         paymentMode: order.payment_mode,
         status: order.status,
         razorpayOrderId: order.razorpay_order_id,
