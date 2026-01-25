@@ -65,25 +65,30 @@ app.use((req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Initialize database schema and seed products on startup (non-blocking)
-(async () => {
+// Initialize database schema and seed products before starting server
+const startServer = async () => {
   try {
+    console.log('🔧 Initializing database...');
     await initSchema();
     await seedProducts();
     console.log('✅ Database initialization completed');
+    
+    // Start server after database is ready
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      console.log(`🌍 Server accessible at: http://0.0.0.0:${PORT}`);
+    });
   } catch (error) {
-    // Don't block server startup if initialization fails
-    console.warn('⚠️  Database initialization failed (server will continue):', error.message);
+    console.error('❌ Failed to initialize database:', error);
+    console.error('⚠️  Server will not start. Please check your database connection.');
+    process.exit(1);
   }
-})();
+};
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-  console.log(`🌍 Server accessible at: http://0.0.0.0:${PORT}`);
-});
+// Start the server
+startServer();
 
 module.exports = app;
 
