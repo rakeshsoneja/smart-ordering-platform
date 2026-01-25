@@ -4,40 +4,36 @@ const { getAllOrders, getOrderById, updateOrderStatus } = require('../models/ord
 
 /**
  * Admin Order Routes
- * Handles order viewing and status updates (READ, UPDATE operations)
- * CRUD mapping:
- * - READ: GET /admin/orders (list all), GET /admin/orders/:id (get one)
- * - UPDATE: PATCH /admin/orders/:id/status (update order status only)
- * Note: CREATE and DELETE operations are not exposed to admin
+ * Handles order management for admin panel
  */
 
 /**
  * GET /api/admin/orders
- * Get all orders (READ operation)
- * Returns orders sorted by newest first (created_at DESC)
+ * Get all orders with optional filtering
  */
 router.get('/', async (req, res, next) => {
   try {
-    // Only fetch CONFIRMED orders (active orders)
-    const orders = await getAllOrders({ status: 'confirmed' });
+    const { status, limit, offset } = req.query;
+    
+    const orders = await getAllOrders({ status, limit, offset });
 
     res.json({
       success: true,
       orders: orders.map(order => ({
         id: order.id,
-        customer_name: order.customer_name,
-        customer_phone: order.customer_phone,
-        delivery_address: order.delivery_address,
-        items: order.cart_items, // Map cart_items to items for frontend
-        total_amount: parseFloat(order.amount), // Map amount to total_amount
-        payment_status: order.payment_mode, // Map payment_mode to payment_status
-        order_status: order.status, // Map status to order_status
-        payment_mode: order.payment_mode,
-        razorpay_order_id: order.razorpay_order_id,
-        razorpay_payment_id: order.razorpay_payment_id,
-        created_at: order.created_at,
-        updated_at: order.updated_at,
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        deliveryAddress: order.delivery_address,
+        cartItems: order.cart_items,
+        amount: parseFloat(order.amount),
+        paymentMode: order.payment_mode,
+        status: order.status,
+        razorpayOrderId: order.razorpay_order_id,
+        razorpayPaymentId: order.razorpay_payment_id,
+        createdAt: order.created_at,
+        updatedAt: order.updated_at,
       })),
+      total: orders.length,
     });
   } catch (error) {
     next(error);
@@ -46,7 +42,7 @@ router.get('/', async (req, res, next) => {
 
 /**
  * GET /api/admin/orders/:id
- * Get order by ID (READ operation)
+ * Get order details by ID
  */
 router.get('/:id', async (req, res, next) => {
   try {
@@ -72,18 +68,17 @@ router.get('/:id', async (req, res, next) => {
       success: true,
       order: {
         id: order.id,
-        customer_name: order.customer_name,
-        customer_phone: order.customer_phone,
-        delivery_address: order.delivery_address,
-        items: order.cart_items, // Map cart_items to items for frontend
-        total_amount: parseFloat(order.amount), // Map amount to total_amount
-        payment_status: order.payment_mode, // Map payment_mode to payment_status
-        order_status: order.status, // Map status to order_status
-        payment_mode: order.payment_mode,
-        razorpay_order_id: order.razorpay_order_id,
-        razorpay_payment_id: order.razorpay_payment_id,
-        created_at: order.created_at,
-        updated_at: order.updated_at,
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        deliveryAddress: order.delivery_address,
+        cartItems: order.cart_items,
+        amount: parseFloat(order.amount),
+        paymentMode: order.payment_mode,
+        status: order.status,
+        razorpayOrderId: order.razorpay_order_id,
+        razorpayPaymentId: order.razorpay_payment_id,
+        createdAt: order.created_at,
+        updatedAt: order.updated_at,
       },
     });
   } catch (error) {
@@ -92,14 +87,13 @@ router.get('/:id', async (req, res, next) => {
 });
 
 /**
- * PATCH /api/admin/orders/:id/status
- * Update order status (UPDATE operation)
- * Only allows updating order_status field
- * Valid status transitions should be enforced by business logic
+ * PUT /api/admin/orders/:id/status
+ * Update order status
  */
-router.patch('/:id/status', async (req, res, next) => {
+router.put('/:id/status', async (req, res, next) => {
   try {
     const orderId = parseInt(req.params.id);
+    const { status } = req.body;
 
     if (isNaN(orderId)) {
       return res.status(400).json({
@@ -108,51 +102,37 @@ router.patch('/:id/status', async (req, res, next) => {
       });
     }
 
-    const { order_status } = req.body;
-
-    if (!order_status) {
+    if (!status) {
       return res.status(400).json({
         success: false,
-        error: 'order_status is required',
+        error: 'Status is required',
       });
     }
 
-    // Validate status value
-    const validStatuses = ['pending', 'payment_pending', 'confirmed', 'paid', 'cancelled', 'completed'];
-    if (!validStatuses.includes(order_status)) {
+    const validStatuses = ['pending', 'confirmed', 'paid', 'payment_pending', 'payment_failed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        error: `Invalid order status. Valid statuses: ${validStatuses.join(', ')}`,
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
       });
     }
 
-    // Check if order exists
-    const existingOrder = await getOrderById(orderId);
-    if (!existingOrder) {
+    const updatedOrder = await updateOrderStatus(orderId, status);
+
+    if (!updatedOrder) {
       return res.status(404).json({
         success: false,
         error: 'Order not found',
       });
     }
 
-    // Update order status
-    const updatedOrder = await updateOrderStatus(orderId, order_status);
-
     res.json({
       success: true,
       message: 'Order status updated successfully',
       order: {
         id: updatedOrder.id,
-        customer_name: updatedOrder.customer_name,
-        customer_phone: updatedOrder.customer_phone,
-        delivery_address: updatedOrder.delivery_address,
-        items: updatedOrder.cart_items,
-        total_amount: parseFloat(updatedOrder.amount),
-        payment_status: updatedOrder.payment_mode,
-        order_status: updatedOrder.status,
-        payment_mode: updatedOrder.payment_mode,
-        created_at: updatedOrder.created_at,
-        updated_at: updatedOrder.updated_at,
+        status: updatedOrder.status,
+        updatedAt: updatedOrder.updated_at,
       },
     });
   } catch (error) {

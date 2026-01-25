@@ -4,53 +4,37 @@ const { query } = require('../database/dbConnection');
  * Order Model - Handles all database operations for orders
  */
 
-// Create a new order
-const createOrder = async (orderData) => {
-  const {
-    customerName,
-    customerPhone,
-    deliveryAddress,
-    cartItems,
-    amount,
-    paymentMode,
-    razorpayOrderId = null,
-    razorpayPaymentId = null,
-    razorpaySignature = null,
-    status = 'pending',
-  } = orderData;
+// Get all orders with optional filtering
+const getAllOrders = async (filters = {}) => {
+  let selectQuery = 'SELECT * FROM orders WHERE 1=1';
+  const values = [];
+  let paramIndex = 1;
 
-  const insertQuery = `
-    INSERT INTO orders (
-      customer_name, 
-      customer_phone, 
-      delivery_address, 
-      cart_items, 
-      amount, 
-      payment_mode, 
-      razorpay_order_id, 
-      razorpay_payment_id, 
-      razorpay_signature, 
-      status
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    RETURNING *
-  `;
+  // Filter by status if provided
+  if (filters.status) {
+    selectQuery += ` AND status = $${paramIndex}`;
+    values.push(filters.status);
+    paramIndex++;
+  }
 
-  const values = [
-    customerName,
-    customerPhone,
-    deliveryAddress,
-    JSON.stringify(cartItems),
-    amount,
-    paymentMode,
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature,
-    status,
-  ];
+  // Order by created_at DESC (newest first)
+  selectQuery += ' ORDER BY created_at DESC';
 
-  const result = await query(insertQuery, values);
-  return result.rows[0];
+  // Add limit if provided
+  if (filters.limit) {
+    selectQuery += ` LIMIT $${paramIndex}`;
+    values.push(parseInt(filters.limit));
+    paramIndex++;
+  }
+
+  // Add offset if provided
+  if (filters.offset) {
+    selectQuery += ` OFFSET $${paramIndex}`;
+    values.push(parseInt(filters.offset));
+  }
+
+  const result = await query(selectQuery, values);
+  return result.rows;
 };
 
 // Get order by ID
@@ -67,13 +51,63 @@ const getOrderByRazorpayOrderId = async (razorpayOrderId) => {
   return result.rows[0];
 };
 
+// Get orders by customer phone
+const getOrdersByCustomerPhone = async (phone) => {
+  const selectQuery = 'SELECT * FROM orders WHERE customer_phone = $1 ORDER BY created_at DESC';
+  const result = await query(selectQuery, [phone]);
+  return result.rows;
+};
+
+// Create a new order
+const createOrder = async (orderData) => {
+  const {
+    customerName,
+    customerPhone,
+    deliveryAddress,
+    cartItems,
+    amount,
+    paymentMode,
+    razorpayOrderId,
+    status = 'pending',
+  } = orderData;
+
+  const insertQuery = `
+    INSERT INTO orders (
+      customer_name,
+      customer_phone,
+      delivery_address,
+      cart_items,
+      amount,
+      payment_mode,
+      razorpay_order_id,
+      status
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING *
+  `;
+
+  const values = [
+    customerName,
+    customerPhone,
+    deliveryAddress,
+    JSON.stringify(cartItems),
+    amount,
+    paymentMode,
+    razorpayOrderId || null,
+    status,
+  ];
+
+  const result = await query(insertQuery, values);
+  return result.rows[0];
+};
+
 // Update order status
 const updateOrderStatus = async (orderId, status, additionalData = {}) => {
-  const updateFields = ['status = $2'];
-  const values = [orderId, status];
-  let paramIndex = 3;
+  const updateFields = ['status = $1'];
+  const values = [status];
+  let paramIndex = 2;
 
-  // Dynamically add additional fields to update
+  // Add razorpay payment details if provided
   if (additionalData.razorpayPaymentId) {
     updateFields.push(`razorpay_payment_id = $${paramIndex}`);
     values.push(additionalData.razorpayPaymentId);
@@ -86,10 +120,11 @@ const updateOrderStatus = async (orderId, status, additionalData = {}) => {
     paramIndex++;
   }
 
+  values.push(orderId);
   const updateQuery = `
     UPDATE orders 
     SET ${updateFields.join(', ')}
-    WHERE id = $1
+    WHERE id = $${paramIndex}
     RETURNING *
   `;
 
@@ -97,51 +132,11 @@ const updateOrderStatus = async (orderId, status, additionalData = {}) => {
   return result.rows[0];
 };
 
-// Get orders by customer phone
-const getOrdersByCustomerPhone = async (customerPhone) => {
-  const selectQuery = `
-    SELECT * FROM orders 
-    WHERE customer_phone = $1 
-    ORDER BY created_at DESC
-  `;
-  const result = await query(selectQuery, [customerPhone]);
-  return result.rows;
-};
-
-// Get all orders (for admin)
-// CRUD mapping: READ - Get all orders
-const getAllOrders = async (filters = {}) => {
-  let selectQuery = 'SELECT * FROM orders WHERE 1=1';
-  const values = [];
-  let paramIndex = 1;
-
-  if (filters.status) {
-    selectQuery += ` AND status = $${paramIndex}`;
-    values.push(filters.status);
-    paramIndex++;
-  }
-
-  selectQuery += ' ORDER BY created_at DESC'; // Default sort: newest first
-
-  const result = await query(selectQuery, values);
-  return result.rows;
-};
-
 module.exports = {
-  createOrder,
+  getAllOrders,
   getOrderById,
   getOrderByRazorpayOrderId,
-  updateOrderStatus,
   getOrdersByCustomerPhone,
-  getAllOrders,
+  createOrder,
+  updateOrderStatus,
 };
-
-
-
-
-
-
-
-
-
-
