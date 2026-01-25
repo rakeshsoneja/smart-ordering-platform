@@ -62,7 +62,11 @@ function OrderConfirmationContent() {
     : order.cartItems
 
   const isPaid = order.status === 'paid' || order.status === 'confirmed' || status === 'paid' || status === 'cod'
-  const totalAmount = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
+  const totalAmount = cartItems.reduce((sum: number, item: any) => {
+    const price = Number(item?.price) || 0
+    const quantity = Number(item?.quantity) || 0
+    return sum + (price * quantity)
+  }, 0)
   const paymentModeText = order.paymentMode === 'razorpay' ? 'UPI / Card' : 'Cash on Delivery'
   const statusText = order.status === 'paid' ? 'Confirmed' : 
                      order.status === 'confirmed' ? 'Confirmed' :
