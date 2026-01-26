@@ -37,10 +37,13 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
               {/* Cart Items */}
               <div className="space-y-3 sm:space-y-4 mb-6">
                 {cartItems.map((item) => {
+                  const price = Number(item?.price) || 0
+                  const quantity = Number(item?.quantity) || 0
+                  const itemTotal = price * quantity
+                  const unitValue = item?.unitValue || 1
                   const unitLabel = item.unit === 'pc' 
-                    ? `${item.unitValue} ${item.unitValue === 1 ? 'pc' : 'pcs'}`
-                    : `${item.unitValue}g`
-                  const itemTotal = item.price * item.quantity
+                    ? `${unitValue} ${unitValue === 1 ? 'pc' : 'pcs'}`
+                    : `${unitValue}g`
                   
                   return (
                     <div
@@ -50,22 +53,22 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                       {/* Item Name with Unit - Left side, takes available space */}
                       <div className="flex-1 min-w-0 pr-2">
                         <h3 className="font-semibold text-gray-800 text-base sm:text-lg leading-tight">
-                          {item.name} ({unitLabel})
+                          {item.name || 'Unknown Item'} ({unitLabel})
                         </h3>
                       </div>
                       
                       {/* Quantity Controls - Center */}
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                          onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          onClick={() => updateQuantity(item.id, Math.max(1, quantity - 1))}
                           className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
                           aria-label="Decrease quantity"
                         >
                           −
                         </button>
-                        <span className="w-8 sm:w-10 text-center font-semibold text-gray-800 text-base sm:text-lg">{item.quantity}</span>
+                        <span className="w-8 sm:w-10 text-center font-semibold text-gray-800 text-base sm:text-lg">{quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, quantity + 1)}
                           className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
                           aria-label="Increase quantity"
                         >

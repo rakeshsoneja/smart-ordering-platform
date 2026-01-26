@@ -394,17 +394,20 @@ export default function CheckoutPage() {
             </h2>
             <div className="space-y-1.5 mb-2">
               {cartItems.map((item, index) => {
-                const itemTotal = item.price * item.quantity
+                const price = Number(item?.price) || 0
+                const quantity = Number(item?.quantity) || 0
+                const itemTotal = price * quantity
+                const unitValue = item?.unitValue || 1
                 const unitLabel = item.unit === 'pc' 
-                  ? `${item.unitValue} ${item.unitValue === 1 ? 'pc' : 'pcs'}`
-                  : `${item.unitValue}g`
+                  ? `${unitValue} ${unitValue === 1 ? 'pc' : 'pcs'}`
+                  : `${unitValue}g`
                 const isLastItem = index === cartItems.length - 1
                 
                 return (
                   <div key={item.id} className={`flex justify-between items-start pb-1.5 ${isLastItem ? 'border-b-2 border-gray-300' : 'border-b border-gray-200/50'}`}>
                     <div>
-                      <p className="font-semibold text-gray-800 mb-0.5 text-sm sm:text-base">{item.name} ({unitLabel})</p>
-                      <p className="text-xs sm:text-sm text-gray-600">Quantity: {item.quantity}</p>
+                      <p className="font-semibold text-gray-800 mb-0.5 text-sm sm:text-base">{item.name || 'Unknown Item'} ({unitLabel})</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Quantity: {quantity}</p>
                     </div>
                     <p className="font-semibold text-gray-800 text-sm sm:text-base">
                       ₹ {itemTotal.toFixed(2)}
