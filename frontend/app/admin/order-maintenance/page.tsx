@@ -63,7 +63,21 @@ export default function OrderMaintenancePage() {
       setError('')
       const response = await axiosInstance.get('/api/admin/orders')
       if (response.data.success) {
-        setOrders(response.data.orders)
+        // Map API response to match expected structure
+        const mappedOrders = response.data.orders.map((order: any) => ({
+          id: order.id,
+          customer_name: order.customerName || order.customer_name || '',
+          customer_phone: order.customerPhone || order.customer_phone || '',
+          delivery_address: order.deliveryAddress || order.delivery_address || '',
+          items: Array.isArray(order.cartItems) ? order.cartItems : (Array.isArray(order.items) ? order.items : []),
+          total_amount: order.amount != null ? Number(order.amount) : (order.total_amount != null ? Number(order.total_amount) : 0),
+          payment_status: order.paymentMode || order.payment_mode || '',
+          order_status: order.status || order.order_status || 'pending',
+          payment_mode: order.paymentMode || order.payment_mode || '',
+          created_at: order.createdAt || order.created_at || new Date().toISOString(),
+          updated_at: order.updatedAt || order.updated_at || new Date().toISOString(),
+        }))
+        setOrders(mappedOrders)
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch orders')
@@ -279,7 +293,7 @@ export default function OrderMaintenancePage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">₹{order.total_amount.toFixed(2)}</div>
+                            <div className="text-sm font-medium text-gray-900">₹{(order.total_amount != null ? Number(order.total_amount) : 0).toFixed(2)}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-gray-900 capitalize">{order.payment_mode}</span>
@@ -347,7 +361,7 @@ export default function OrderMaintenancePage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Amount</p>
-                        <p className="text-sm font-semibold text-gray-900">₹{order.total_amount.toFixed(2)}</p>
+                        <p className="text-sm font-semibold text-gray-900">₹{(order.total_amount != null ? Number(order.total_amount) : 0).toFixed(2)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Payment</p>
@@ -423,7 +437,7 @@ export default function OrderMaintenancePage() {
                                 {item.unit && ` (${item.unitValue || 1} ${item.unit === 'pc' ? 'piece' : 'g'} per unit)`}
                               </p>
                             </div>
-                            <p className="text-base font-semibold text-gray-900">₹{(item.price * item.quantity).toFixed(2)}</p>
+                            <p className="text-base font-semibold text-gray-900">₹{((item.price != null ? Number(item.price) : 0) * (item.quantity != null ? Number(item.quantity) : 0)).toFixed(2)}</p>
                           </div>
                         ))
                       ) : (
@@ -432,7 +446,7 @@ export default function OrderMaintenancePage() {
                     </div>
                     <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
                       <span className="text-lg font-semibold text-gray-900">Total</span>
-                      <span className="text-lg font-bold text-gray-900">₹{selectedOrder.total_amount.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-gray-900">₹{(selectedOrder.total_amount != null ? Number(selectedOrder.total_amount) : 0).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -489,7 +503,7 @@ export default function OrderMaintenancePage() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Total Amount</p>
-                        <p className="text-base font-medium text-gray-900">₹{selectedOrder.total_amount.toFixed(2)}</p>
+                        <p className="text-base font-medium text-gray-900">₹{(selectedOrder.total_amount != null ? Number(selectedOrder.total_amount) : 0).toFixed(2)}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Order Date</p>
