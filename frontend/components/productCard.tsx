@@ -34,10 +34,8 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   const { cartItems, addToCart, updateQuantity, removeFromCart } = useCart()
   
   // Determine if product uses variants
-  const hasVariants = product.variants && product.variants.length > 0
-  const availableVariants = hasVariants
-    ? product.variants.filter(v => v.isActive)
-    : []
+  const availableVariants = (product.variants || []).filter(v => v.isActive)
+  const hasVariants = availableVariants.length > 0
 
   // Get default variant or first variant
   const defaultVariant = hasVariants
