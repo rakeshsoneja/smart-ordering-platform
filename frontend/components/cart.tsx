@@ -51,45 +51,51 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                   return (
                     <div
                       key={item.variantId ? `variant_${item.variantId}` : `product_${item.id}`}
-                      className="flex items-center gap-3 sm:gap-4 py-3 sm:py-4 border-b border-gray-200 last:border-b-0"
+                      className="flex items-start gap-3 sm:gap-4 py-3 sm:py-4 border-b border-gray-200 last:border-b-0"
                     >
                       {/* Item Name with Unit/Variant - Left side, takes available space */}
                       <div className="flex-1 min-w-0 pr-2">
-                        <h3 className="font-semibold text-gray-800 text-base sm:text-lg leading-tight">
-                          {item.name || 'Unknown Item'}
-                          {displayLabel && ` (${displayLabel})`}
-                        </h3>
-                        {item.variantName && (
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            ₹{price.toFixed(2)} per {item.variantName}
-                          </p>
-                        )}
-                      </div>
-                      
-                      {/* Quantity Controls - Center */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => updateQuantity(item.id, Math.max(1, quantity - 1), item.variantId)}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
-                          aria-label="Decrease quantity"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 sm:w-10 text-center font-semibold text-gray-800 text-base sm:text-lg">{quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, quantity + 1, item.variantId)}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
-                          aria-label="Increase quantity"
-                        >
-                          +
-                        </button>
-                      </div>
-                      
-                      {/* Price - Right side */}
-                      <div className="w-20 sm:w-24 text-right flex-shrink-0">
-                        <p className="font-semibold text-gray-800 text-base sm:text-lg">
-                          ₹ {itemTotal.toFixed(2)}
-                        </p>
+                        {/* Line 1: Product Name, Qty, Price */}
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <h3 className="font-semibold text-gray-800 text-base sm:text-lg leading-tight flex-1">
+                            {item.name || 'Unknown Item'}
+                          </h3>
+                          <span className="text-xs sm:text-sm text-gray-600 flex-shrink-0">
+                            Qty: {quantity}
+                          </span>
+                          <div className="w-20 sm:w-24 text-right flex-shrink-0">
+                            <p className="font-semibold text-gray-800 text-base sm:text-lg">
+                              ₹ {itemTotal.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Line 2: Variant on left, Quantity selector on right */}
+                        <div className="flex justify-between items-center w-full mt-1.5">
+                          {/* Variant display - Left aligned */}
+                          <div className="text-xs sm:text-sm text-gray-600 flex-shrink-0">
+                            {displayLabel || '\u00A0'}
+                          </div>
+                          
+                          {/* Quantity Controls - Right aligned */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => updateQuantity(item.id, Math.max(1, quantity - 1), item.variantId)}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
+                              aria-label="Decrease quantity"
+                            >
+                              −
+                            </button>
+                            <span className="w-8 sm:w-10 text-center font-semibold text-gray-800 text-base sm:text-lg">{quantity}</span>
+                            <button
+                              onClick={() => updateQuantity(item.id, quantity + 1, item.variantId)}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
+                              aria-label="Increase quantity"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
                       </div>
                       
                       {/* Delete Button - Far right */}

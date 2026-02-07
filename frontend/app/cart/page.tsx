@@ -57,6 +57,9 @@ export default function CartPage() {
                     image={item.image}
                     quantity={item.quantity}
                     price={item.price}
+                    variantName={item.variantName}
+                    unit={item.unit}
+                    unitValue={item.unitValue}
                     onQuantityChange={handleQuantityChange}
                     onRemove={removeFromCart}
                   />

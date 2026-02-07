@@ -9,6 +9,9 @@ interface CartItemProps {
   image?: string
   quantity: number
   price: number
+  variantName?: string
+  unit?: 'pc' | 'gms'
+  unitValue?: number
   onQuantityChange: (id: number, newQuantity: number) => void
   onRemove: (id: number) => void
 }
@@ -20,10 +23,19 @@ export function CartItem({
   image,
   quantity,
   price,
+  variantName,
+  unit,
+  unitValue,
   onQuantityChange,
   onRemove,
 }: CartItemProps) {
   const itemTotal = price * quantity
+  
+  // Display variant name if available, otherwise use legacy unit label
+  const unitLabel = unit === 'pc' 
+    ? `${unitValue || 1} ${(unitValue || 1) === 1 ? 'pc' : 'pcs'}`
+    : `${unitValue || 1}g`
+  const displayLabel = variantName || (unit ? unitLabel : null)
 
   const handleDecrease = () => {
     if (quantity > 1) {
@@ -75,8 +87,18 @@ export function CartItem({
           </div>
         </div>
 
-        {/* Second Row: Quantity Controls */}
-        <div className="flex items-center justify-start">
+        {/* Second Row: Variant on left, Quantity selector on right */}
+        <div className="flex justify-between items-center w-full">
+          {/* Variant display - Left aligned */}
+          {displayLabel ? (
+            <div className="text-xs sm:text-sm text-gray-600">
+              {displayLabel}
+            </div>
+          ) : (
+            <div></div>
+          )}
+          
+          {/* Quantity Controls - Right aligned */}
           <div className="flex items-center gap-1 bg-gray-50 rounded px-1.5 py-0.5">
             <button
               onClick={handleDecrease}
@@ -129,6 +151,9 @@ export function CartItem({
         <div className="flex-1 min-w-0">
           <h3 className="text-gray-900 font-bold text-base mb-1">
             {name}
+            {displayLabel && (
+              <span className="text-gray-500 font-normal"> ({displayLabel})</span>
+            )}
           </h3>
           {description && (
             <p className="text-sm text-gray-600 mb-2 line-clamp-1">
