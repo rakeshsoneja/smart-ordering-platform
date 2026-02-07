@@ -157,8 +157,10 @@ export default function CheckoutPage() {
       const cartItemsForBackend = cartItems.map(item => ({
         name: item.name,
         quantity: item.quantity,
-        unit: item.unit,
-        unitValue: item.unitValue,
+        unit: item.unit || null, // Legacy field
+        unitValue: item.unitValue || null, // Legacy field
+        variantId: item.variantId || null, // NEW: variant ID if using variants
+        variantName: item.variantName || null, // NEW: variant name
         price: item.price,
         totalPrice: item.price * item.quantity,
       }))
@@ -403,10 +405,16 @@ export default function CheckoutPage() {
                   : `${unitValue}g`
                 const isLastItem = index === cartItems.length - 1
                 
+                // Display variant name if available, otherwise use legacy unit label
+                const displayLabel = item.variantName || unitLabel
+                
                 return (
-                  <div key={item.id} className={`flex justify-between items-start pb-1.5 ${isLastItem ? 'border-b-2 border-gray-300' : 'border-b border-gray-200/50'}`}>
+                  <div key={item.variantId ? `variant_${item.variantId}` : `product_${item.id}`} className={`flex justify-between items-start pb-1.5 ${isLastItem ? 'border-b-2 border-gray-300' : 'border-b border-gray-200/50'}`}>
                     <div>
-                      <p className="font-semibold text-gray-800 mb-0.5 text-sm sm:text-base">{item.name || 'Unknown Item'} ({unitLabel})</p>
+                      <p className="font-semibold text-gray-800 mb-0.5 text-sm sm:text-base">
+                        {item.name || 'Unknown Item'}
+                        {displayLabel && ` (${displayLabel})`}
+                      </p>
                       <p className="text-xs sm:text-sm text-gray-600">Quantity: {quantity}</p>
                     </div>
                     <p className="font-semibold text-gray-800 text-sm sm:text-base">

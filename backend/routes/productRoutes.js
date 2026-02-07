@@ -7,6 +7,10 @@ const {
   updateProduct,
   deleteProduct,
 } = require('../models/productModel');
+const {
+  getVariantsByProductId,
+  getDefaultVariantByProductId,
+} = require('../models/variantModel');
 
 /**
  * Product Routes
@@ -26,21 +30,52 @@ router.get('/', async (req, res, next) => {
 
     const products = await getAllProducts(filters);
 
+    // Fetch variants for each product
+    const productsWithVariants = await Promise.all(
+      products.map(async (product) => {
+        const variants = await getVariantsByProductId(product.id);
+        
+        // If variants exist, include them; otherwise use legacy price/unit
+        const productData = {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          image: product.image,
+          category: product.category,
+          status: product.status,
+          createdAt: product.created_at,
+          updatedAt: product.updated_at,
+        };
+
+        if (variants.length > 0) {
+          // Product has variants
+          productData.variants = variants.map(v => ({
+            variantId: v.variant_id,
+            variantName: v.variant_name,
+            variantWeightGrams: v.variant_weight_grams,
+            variantPrice: parseFloat(v.variant_price),
+            isDefaultVariant: v.is_default_variant,
+            isActive: v.is_active,
+          }));
+          // For backward compatibility, set price to default variant price
+          const defaultVariant = variants.find(v => v.is_default_variant) || variants[0];
+          productData.price = parseFloat(defaultVariant.variant_price);
+          productData.unit = product.unit; // Keep for backward compatibility
+          productData.unitValue = product.unit_value; // Keep for backward compatibility
+        } else {
+          // Legacy product without variants
+          productData.price = parseFloat(product.price);
+          productData.unit = product.unit;
+          productData.unitValue = product.unit_value;
+        }
+
+        return productData;
+      })
+    );
+
     res.json({
       success: true,
-      products: products.map(product => ({
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: parseFloat(product.price),
-        unit: product.unit,
-        unitValue: product.unit_value,
-        image: product.image,
-        category: product.category,
-        status: product.status,
-        createdAt: product.created_at,
-        updatedAt: product.updated_at,
-      })),
+      products: productsWithVariants,
     });
   } catch (error) {
     next(error);
@@ -71,21 +106,45 @@ router.get('/:productId', async (req, res, next) => {
       });
     }
 
+    // Fetch variants for this product
+    const variants = await getVariantsByProductId(productId);
+
+    const productData = {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      image: product.image,
+      category: product.category,
+      status: product.status,
+      createdAt: product.created_at,
+      updatedAt: product.updated_at,
+    };
+
+    if (variants.length > 0) {
+      // Product has variants
+      productData.variants = variants.map(v => ({
+        variantId: v.variant_id,
+        variantName: v.variant_name,
+        variantWeightGrams: v.variant_weight_grams,
+        variantPrice: parseFloat(v.variant_price),
+        isDefaultVariant: v.is_default_variant,
+        isActive: v.is_active,
+      }));
+      // For backward compatibility, set price to default variant price
+      const defaultVariant = variants.find(v => v.is_default_variant) || variants[0];
+      productData.price = parseFloat(defaultVariant.variant_price);
+      productData.unit = product.unit; // Keep for backward compatibility
+      productData.unitValue = product.unit_value; // Keep for backward compatibility
+    } else {
+      // Legacy product without variants
+      productData.price = parseFloat(product.price);
+      productData.unit = product.unit;
+      productData.unitValue = product.unit_value;
+    }
+
     res.json({
       success: true,
-      product: {
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: parseFloat(product.price),
-        unit: product.unit,
-        unitValue: product.unit_value,
-        image: product.image,
-        category: product.category,
-        status: product.status,
-        createdAt: product.created_at,
-        updatedAt: product.updated_at,
-      },
+      product: productData,
     });
   } catch (error) {
     next(error);

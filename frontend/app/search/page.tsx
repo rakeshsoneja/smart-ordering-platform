@@ -168,8 +168,7 @@ export default function SearchPage() {
         {searchResults.length > 0 && (
           <div className="space-y-3 sm:space-y-4">
             {searchResults.map((order: any) => {
-              const orderAmount = order?.amount != null ? Number(order.amount) : 0
-              const orderTotal = isNaN(orderAmount) ? 0 : orderAmount
+              const orderTotal = Number(order.amount) || 0
 
               return (
                 <div

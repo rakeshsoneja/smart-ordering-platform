@@ -1,15 +1,26 @@
 'use client'
 
+import { useState } from 'react'
 import { Plus, Minus } from 'lucide-react'
 import { useCart } from '@/context/cartContext'
+
+interface Variant {
+  variantId: number
+  variantName: string
+  variantWeightGrams?: number
+  variantPrice: number
+  isDefaultVariant: boolean
+  isActive: boolean
+}
 
 interface Product {
   id: number
   name: string
   description: string
-  price: number
-  unit: 'pc' | 'gms'
-  unitValue: number
+  price: number // Legacy: single price (for backward compatibility)
+  unit?: 'pc' | 'gms' // Legacy
+  unitValue?: number // Legacy
+  variants?: Variant[] // NEW: variants array
   image?: string
   category: string
 }
@@ -22,41 +33,106 @@ interface ProductCardProps {
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const { cartItems, addToCart, updateQuantity, removeFromCart } = useCart()
   
-  const cartItem = cartItems.find(item => item.id === product.id)
+  // Determine if product uses variants
+  const hasVariants = product.variants && product.variants.length > 0
+  const availableVariants = hasVariants
+    ? product.variants.filter(v => v.isActive)
+    : []
+
+  // Get default variant or first variant
+  const defaultVariant = hasVariants
+    ? availableVariants.find(v => v.isDefaultVariant) || availableVariants[0]
+    : null
+
+  // State for selected variant
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(
+    defaultVariant?.variantId || null
+  )
+
+  // Get selected variant
+  const selectedVariant = hasVariants && selectedVariantId
+    ? availableVariants.find(v => v.variantId === selectedVariantId)
+    : null
+
+  // Get current price (from selected variant or legacy price)
+  const currentPrice = selectedVariant
+    ? selectedVariant.variantPrice
+    : (product.price || 0)
+
+  // Find cart item (check by variantId if using variants, else by product id)
+  const cartItem = hasVariants && selectedVariantId
+    ? cartItems.find(item => item.variantId === selectedVariantId)
+    : cartItems.find(item => item.id === product.id && !item.variantId)
+  
   const quantity = cartItem?.quantity || 0
   const inCart = quantity > 0
   
-  const unitLabel = product.unit === 'pc' 
-    ? `per ${product.unitValue === 1 ? 'piece' : `${product.unitValue} pieces`}`
-    : `per ${product.unitValue}g`
-  
-  const quantityLabel = product.unit === 'pc' 
-    ? `for ${product.unitValue === 1 ? '1 piece' : `${product.unitValue} pieces`}`
-    : `for ${product.unitValue}g`
-  
+  // Legacy unit label (for backward compatibility)
+  const unitLabel = !hasVariants && product.unit
+    ? product.unit === 'pc' 
+      ? `per ${product.unitValue === 1 ? 'piece' : `${product.unitValue} pieces`}`
+      : `per ${product.unitValue}g`
+    : ''
+
   const handleAddToCart = () => {
-    if (quantity === 0) {
-      addToCart({
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        unit: product.unit,
-        unitValue: product.unitValue,
-        image: product.image
-      })
-      onAddToCart()
+    if (hasVariants && selectedVariantId && selectedVariant) {
+      // Variant-based product
+      if (quantity === 0) {
+        addToCart({
+          id: product.id,
+          variantId: selectedVariantId,
+          variantName: selectedVariant.variantName,
+          name: product.name,
+          description: product.description,
+          price: selectedVariant.variantPrice,
+          image: product.image
+        })
+        onAddToCart()
+      } else {
+        updateQuantity(product.id, quantity + 1, selectedVariantId)
+      }
     } else {
-      updateQuantity(product.id, quantity + 1)
+      // Legacy product (no variants)
+      if (quantity === 0) {
+        addToCart({
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price || 0,
+          unit: product.unit,
+          unitValue: product.unitValue,
+          image: product.image
+        })
+        onAddToCart()
+      } else {
+        updateQuantity(product.id, quantity + 1)
+      }
     }
   }
   
   const handleRemoveFromCart = () => {
     if (quantity > 1) {
-      updateQuantity(product.id, quantity - 1)
+      if (hasVariants && selectedVariantId) {
+        updateQuantity(product.id, quantity - 1, selectedVariantId)
+      } else {
+        updateQuantity(product.id, quantity - 1)
+      }
     } else {
-      removeFromCart(product.id)
+      if (hasVariants && selectedVariantId) {
+        removeFromCart(product.id, selectedVariantId)
+      } else {
+        removeFromCart(product.id)
+      }
     }
+  }
+
+  // Handle variant selection change
+  const handleVariantChange = (variantId: number) => {
+    // If there's an item in cart with different variant, remove it first
+    if (cartItem && cartItem.variantId !== variantId) {
+      removeFromCart(product.id, cartItem.variantId)
+    }
+    setSelectedVariantId(variantId)
   }
 
   return (
@@ -94,23 +170,53 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           {product.name}
         </h3>
         
-        {/* Description */}
-        <p className="text-xs lg:text-sm text-gray-600 mb-2 lg:mb-3 line-clamp-2 leading-snug">
-          {product.description}
-        </p>
-
-        {/* Quantity/Weight Label */}
-        <div className="mb-2 lg:mb-3">
-          <span className="text-xs lg:text-sm text-gray-500">
-            {quantityLabel}
-          </span>
+        {/* Description - Fixed height to ensure consistent alignment across cards */}
+        <div className="mb-2 lg:mb-3 min-h-[2.5rem] lg:min-h-[2.75rem]">
+          <p className="text-xs lg:text-sm text-gray-600 line-clamp-2 leading-snug">
+            {product.description}
+          </p>
         </div>
 
-        {/* Price - Highlighted */}
+        {/* Variant/Unit Selection and Price */}
         <div className="mb-3 lg:mb-4">
-          <span className="text-base lg:text-xl font-bold text-gray-900">
-            ₹{product.price}
-          </span>
+          {/* Variant-price-container: Vertical flex layout */}
+          <div className="flex flex-col items-start gap-1">
+            {/* Variant-container: Variant Dropdown or Unit Label */}
+            <div>
+              {hasVariants && availableVariants.length > 1 ? (
+                <select
+                  value={selectedVariantId || ''}
+                  onChange={(e) => handleVariantChange(Number(e.target.value))}
+                  className="text-xs lg:text-sm text-gray-700 border border-gray-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-gray-900 focus:border-transparent cursor-pointer w-auto"
+                >
+                  {availableVariants.map((variant) => (
+                    <option key={variant.variantId} value={variant.variantId}>
+                      {variant.variantName}
+                    </option>
+                  ))}
+                </select>
+              ) : hasVariants && availableVariants.length === 1 && selectedVariant ? (
+                <span className="text-xs lg:text-sm text-gray-500">
+                  {selectedVariant.variantName}
+                </span>
+              ) : unitLabel ? (
+                <span className="text-xs lg:text-sm text-gray-500">
+                  {unitLabel}
+                </span>
+              ) : null}
+            </div>
+            {/* Price-container: Price display */}
+            <div>
+              <span className="text-base lg:text-xl font-bold text-gray-900">
+                ₹{currentPrice.toFixed(2)}
+              </span>
+            </div>
+          </div>
+          {hasVariants && quantity > 0 && selectedVariant && (
+            <div className="text-xs text-gray-600 mt-1">
+              {quantity} × {selectedVariant.variantName} = ₹{(currentPrice * quantity).toFixed(2)}
+            </div>
+          )}
         </div>
 
         {/* Add to Cart / Quantity Stepper - Full Width, Aligned at Bottom */}

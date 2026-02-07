@@ -1,8 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, X } from 'lucide-react'
+import { Plus, Edit, Trash2, X, Package } from 'lucide-react'
 import axiosInstance from '@/lib/axiosConfig'
+
+interface Variant {
+  variantId?: number
+  variantName: string
+  variantWeightGrams?: number
+  variantPrice: number
+  isDefaultVariant: boolean
+  isActive: boolean
+}
 
 interface Product {
   id: number
@@ -14,6 +23,7 @@ interface Product {
   image?: string
   category: string
   status: 'active' | 'disabled'
+  variants?: Variant[]
 }
 
 export default function ProductMaintenancePage() {
@@ -39,6 +49,7 @@ export default function ProductMaintenancePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [variants, setVariants] = useState<Variant[]>([])
 
   // Fetch products
   const fetchProducts = async () => {
@@ -109,6 +120,43 @@ export default function ProductMaintenancePage() {
     if (fileInput) fileInput.value = ''
   }
 
+  // Variant management functions
+  const handleAddVariant = () => {
+    setVariants(prev => [...prev, {
+      variantName: '',
+      variantWeightGrams: undefined,
+      variantPrice: 0,
+      isDefaultVariant: prev.length === 0, // First variant is default
+      isActive: true,
+    }])
+  }
+
+  const handleRemoveVariant = (index: number) => {
+    setVariants(prev => {
+      const updated = prev.filter((_, i) => i !== index)
+      // If we removed the default variant, make the first one default
+      if (updated.length > 0 && prev[index].isDefaultVariant) {
+        updated[0].isDefaultVariant = true
+      }
+      return updated
+    })
+  }
+
+  const handleVariantChange = (index: number, field: keyof Variant, value: string | number | boolean) => {
+    setVariants(prev => {
+      const updated = [...prev]
+      if (field === 'isDefaultVariant' && value === true) {
+        // Unset other defaults
+        updated.forEach((v, i) => {
+          v.isDefaultVariant = i === index
+        })
+      } else {
+        updated[index] = { ...updated[index], [field]: value }
+      }
+      return updated
+    })
+  }
+
   // Validate form
   const validateForm = () => {
     const errors: Record<string, string> = {}
@@ -117,12 +165,32 @@ export default function ProductMaintenancePage() {
       errors.name = 'Product name is required'
     }
 
-    if (!formData.price || isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
-      errors.price = 'Valid price is required'
+    // If no variants, validate legacy price/unit fields
+    if (variants.length === 0) {
+      if (!formData.price || isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
+        errors.price = 'Valid price is required'
+      }
+
+      if (!formData.unitValue || isNaN(parseInt(formData.unitValue)) || parseInt(formData.unitValue) <= 0) {
+        errors.unitValue = 'Valid unit value is required'
+      }
     }
 
-    if (!formData.unitValue || isNaN(parseInt(formData.unitValue)) || parseInt(formData.unitValue) <= 0) {
-      errors.unitValue = 'Valid unit value is required'
+    // Validate variants if they exist
+    if (variants.length > 0) {
+      const defaultCount = variants.filter(v => v.isDefaultVariant).length
+      if (defaultCount !== 1) {
+        errors.variants = 'Exactly one variant must be marked as default'
+      }
+
+      variants.forEach((variant, index) => {
+        if (!variant.variantName.trim()) {
+          errors[`variant_name_${index}`] = 'Variant name is required'
+        }
+        if (!variant.variantPrice || isNaN(variant.variantPrice) || variant.variantPrice <= 0) {
+          errors[`variant_price_${index}`] = 'Valid price is required'
+        }
+      })
     }
 
     setFormErrors(errors)
@@ -145,9 +213,27 @@ export default function ProductMaintenancePage() {
       const formDataToSend = new FormData()
       formDataToSend.append('name', formData.name.trim())
       formDataToSend.append('description', formData.description.trim())
-      formDataToSend.append('price', formData.price)
-      formDataToSend.append('unit', formData.unit)
-      formDataToSend.append('unitValue', formData.unitValue)
+      
+      // If variants exist, use default variant price; otherwise use form price
+      if (variants.length > 0) {
+        const defaultVariant = variants.find(v => v.isDefaultVariant) || variants[0]
+        formDataToSend.append('price', defaultVariant.variantPrice.toString())
+        // For variants, we still need unit/unitValue for backward compatibility
+        // Try to extract from variant name or use defaults
+        const weightMatch = defaultVariant.variantName.match(/(\d+)g/i)
+        if (weightMatch) {
+          formDataToSend.append('unit', 'gms')
+          formDataToSend.append('unitValue', weightMatch[1])
+        } else {
+          formDataToSend.append('unit', 'pc')
+          formDataToSend.append('unitValue', '1')
+        }
+      } else {
+        formDataToSend.append('price', formData.price)
+        formDataToSend.append('unit', formData.unit)
+        formDataToSend.append('unitValue', formData.unitValue)
+      }
+      
       formDataToSend.append('category', formData.category)
       formDataToSend.append('status', formData.status)
 
@@ -157,20 +243,116 @@ export default function ProductMaintenancePage() {
       }
 
       // Use admin endpoints for file upload
+      let productId: number
       if (editingProduct) {
         // Update product using admin endpoint
-        await axiosInstance.put(`/api/admin/products/${editingProduct.id}`, formDataToSend, {
+        const updateResponse = await axiosInstance.put(`/api/admin/products/${editingProduct.id}`, formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         })
+        productId = editingProduct.id
       } else {
         // Create product using admin endpoint
-        await axiosInstance.post('/api/admin/products', formDataToSend, {
+        const createResponse = await axiosInstance.post('/api/admin/products', formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         })
+        productId = createResponse.data.product.id
+      }
+
+      // Handle variants
+      if (variants.length > 0) {
+        if (editingProduct) {
+          // For editing: Update existing variants or create new ones
+          try {
+            // Get existing variants from database
+            const existingVariantsResponse = await axiosInstance.get(`/api/variants/product/${productId}`)
+            const existingVariants = existingVariantsResponse.data.success 
+              ? existingVariantsResponse.data.variants 
+              : []
+            
+            // Get IDs of variants that still exist in the form
+            const currentVariantIds = variants
+              .filter(v => v.variantId)
+              .map(v => v.variantId)
+            
+            // Delete variants that were removed from the form
+            for (const existingVariant of existingVariants) {
+              if (!currentVariantIds.includes(existingVariant.variantId)) {
+                try {
+                  await axiosInstance.delete(`/api/variants/${existingVariant.variantId}`)
+                } catch (err) {
+                  console.error(`Error deleting variant ${existingVariant.variantId}:`, err)
+                }
+              }
+            }
+            
+            // Update or create variants
+            for (const variant of variants) {
+              if (variant.variantId) {
+                // Update existing variant
+                try {
+                  const updateResponse = await axiosInstance.put(`/api/variants/${variant.variantId}`, {
+                    variantName: variant.variantName.trim(),
+                    variantWeightGrams: variant.variantWeightGrams || null,
+                    variantPrice: variant.variantPrice,
+                    isDefaultVariant: variant.isDefaultVariant,
+                    isActive: variant.isActive,
+                  })
+                  console.log(`✅ Updated variant ${variant.variantId}:`, updateResponse.data)
+                } catch (err: any) {
+                  console.error(`❌ Error updating variant ${variant.variantId}:`, err)
+                  // Log the full error to see what's wrong
+                  if (err.response) {
+                    console.error('Error response:', err.response.data)
+                  }
+                  throw err
+                }
+              } else {
+                // Create new variant
+                try {
+                  const createResponse = await axiosInstance.post('/api/variants', {
+                    productId,
+                    variantName: variant.variantName.trim(),
+                    variantWeightGrams: variant.variantWeightGrams || null,
+                    variantPrice: variant.variantPrice,
+                    isDefaultVariant: variant.isDefaultVariant,
+                    isActive: variant.isActive,
+                  })
+                  console.log(`✅ Created variant:`, createResponse.data)
+                } catch (err: any) {
+                  // If variant name already exists, it might be a race condition
+                  if (err.response?.data?.error?.includes('already exists')) {
+                    console.warn(`⚠️ Variant ${variant.variantName} already exists, skipping creation`)
+                  } else {
+                    console.error(`❌ Error creating variant:`, err)
+                    if (err.response) {
+                      console.error('Error response:', err.response.data)
+                    }
+                    throw err
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error handling variants:', err)
+            throw err
+          }
+        } else {
+          // For new products: Create all variants
+          for (const variant of variants) {
+            await axiosInstance.post('/api/variants', {
+              productId,
+              variantName: variant.variantName.trim(),
+              variantWeightGrams: variant.variantWeightGrams || null,
+              variantPrice: variant.variantPrice,
+              isDefaultVariant: variant.isDefaultVariant,
+              isActive: variant.isActive,
+            })
+          }
+        }
       }
 
       await fetchProducts()
@@ -217,6 +399,7 @@ export default function ProductMaintenancePage() {
       category: 'sweet',
       status: 'active',
     })
+    setVariants([])
     setSelectedImage(null)
     setImagePreview(null)
     setFormErrors({})
@@ -224,7 +407,7 @@ export default function ProductMaintenancePage() {
   }
 
   // Open modal for edit
-  const handleEditProduct = (product: Product) => {
+  const handleEditProduct = async (product: Product) => {
     setEditingProduct(product)
     setFormData({
       name: product.name,
@@ -236,6 +419,28 @@ export default function ProductMaintenancePage() {
       category: product.category,
       status: product.status,
     })
+    
+    // Fetch variants for this product
+    try {
+      const variantsResponse = await axiosInstance.get(`/api/variants/product/${product.id}`)
+      if (variantsResponse.data.success) {
+        const fetchedVariants = variantsResponse.data.variants.map((v: any) => ({
+          variantId: v.variantId,
+          variantName: v.variantName,
+          variantWeightGrams: v.variantWeightGrams,
+          variantPrice: v.variantPrice,
+          isDefaultVariant: v.isDefaultVariant,
+          isActive: v.isActive,
+        }))
+        setVariants(fetchedVariants)
+      } else {
+        setVariants([])
+      }
+    } catch (err) {
+      console.error('Error fetching variants:', err)
+      setVariants([])
+    }
+    
     setSelectedImage(null)
     setImagePreview(product.image || null) // Show existing image as preview
     setFormErrors({})
@@ -246,6 +451,7 @@ export default function ProductMaintenancePage() {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingProduct(null)
+    setVariants([])
     setSelectedImage(null)
     setImagePreview(null)
     setFormErrors({})
@@ -503,13 +709,20 @@ export default function ProductMaintenancePage() {
 
         {/* Add/Edit Product Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto my-8">
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+            onClick={handleCloseModal}
+          >
+            <div 
+              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto my-8"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900">
                   {editingProduct ? 'Edit Product' : 'Add Product'}
                 </h2>
                 <button
+                  type="button"
                   onClick={handleCloseModal}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="Close"
@@ -564,68 +777,198 @@ export default function ProductMaintenancePage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                          Price (₹) *
+                    {/* Legacy Price/Unit fields - only shown if no variants */}
+                    {variants.length === 0 && (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                              Price (₹) *
+                            </label>
+                            <input
+                              type="number"
+                              id="price"
+                              name="price"
+                              value={formData.price}
+                              onChange={handleInputChange}
+                              step="0.01"
+                              min="0"
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                                formErrors.price ? 'border-red-500' : 'border-gray-300'
+                              }`}
+                              placeholder="250"
+                            />
+                            {formErrors.price && (
+                              <p className="mt-1 text-xs text-red-600">{formErrors.price}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-1">
+                              Unit *
+                            </label>
+                            <select
+                              id="unit"
+                              name="unit"
+                              value={formData.unit}
+                              onChange={handleInputChange}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
+                            >
+                              <option value="pc">Piece</option>
+                              <option value="gms">Grams</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label htmlFor="unitValue" className="block text-sm font-medium text-gray-700 mb-1">
+                            Unit Value *
+                          </label>
+                          <input
+                            type="number"
+                            id="unitValue"
+                            name="unitValue"
+                            value={formData.unitValue}
+                            onChange={handleInputChange}
+                            min="1"
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                              formErrors.unitValue ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="1"
+                          />
+                          {formErrors.unitValue && (
+                            <p className="mt-1 text-xs text-red-600">{formErrors.unitValue}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Variants Section */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Product Variants {variants.length === 0 && '(Optional)'}
                         </label>
-                        <input
-                          type="number"
-                          id="price"
-                          name="price"
-                          value={formData.price}
-                          onChange={handleInputChange}
-                          step="0.01"
-                          min="0"
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
-                            formErrors.price ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="250"
-                        />
-                        {formErrors.price && (
-                          <p className="mt-1 text-xs text-red-600">{formErrors.price}</p>
-                        )}
+                        <button
+                          type="button"
+                          onClick={handleAddVariant}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Variant
+                        </button>
                       </div>
 
-                      <div>
-                        <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-1">
-                          Unit *
-                        </label>
-                        <select
-                          id="unit"
-                          name="unit"
-                          value={formData.unit}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
-                        >
-                          <option value="pc">Piece</option>
-                          <option value="gms">Grams</option>
-                        </select>
+                      {formErrors.variants && (
+                        <p className="mb-2 text-xs text-red-600">{formErrors.variants}</p>
+                      )}
+
+                      {variants.length === 0 && (
+                        <p className="text-xs text-gray-500 mb-4">
+                          If no variants are added, the product will use the price and unit fields above.
+                        </p>
+                      )}
+
+                      <div className="space-y-4">
+                        {variants.map((variant, index) => (
+                          <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-start justify-between mb-3">
+                              <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <Package className="w-4 h-4" />
+                                Variant {index + 1} {variant.isDefaultVariant && <span className="text-xs font-normal text-blue-600">(Default)</span>}
+                              </h4>
+                              {variants.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveVariant(index)}
+                                  className="text-red-600 hover:text-red-800 p-1"
+                                  aria-label="Remove variant"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Variant Name (e.g., 250g, 500g) *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={variant.variantName}
+                                  onChange={(e) => handleVariantChange(index, 'variantName', e.target.value)}
+                                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                                    formErrors[`variant_name_${index}`] ? 'border-red-500' : 'border-gray-300'
+                                  }`}
+                                  placeholder="250g"
+                                />
+                                {formErrors[`variant_name_${index}`] && (
+                                  <p className="mt-1 text-xs text-red-600">{formErrors[`variant_name_${index}`]}</p>
+                                )}
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Weight (grams) <span className="text-gray-400">(Optional)</span>
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={variant.variantWeightGrams || ''}
+                                  onChange={(e) => handleVariantChange(index, 'variantWeightGrams', e.target.value ? parseInt(e.target.value) : undefined)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
+                                  placeholder="250"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Price (₹) *
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={variant.variantPrice}
+                                  onChange={(e) => handleVariantChange(index, 'variantPrice', parseFloat(e.target.value) || 0)}
+                                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                                    formErrors[`variant_price_${index}`] ? 'border-red-500' : 'border-gray-300'
+                                  }`}
+                                  placeholder="250.00"
+                                />
+                                {formErrors[`variant_price_${index}`] && (
+                                  <p className="mt-1 text-xs text-red-600">{formErrors[`variant_price_${index}`]}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 flex items-center gap-4">
+                              <label className="flex items-center gap-2 text-xs text-gray-700">
+                                <input
+                                  type="checkbox"
+                                  checked={variant.isDefaultVariant}
+                                  onChange={(e) => handleVariantChange(index, 'isDefaultVariant', e.target.checked)}
+                                  className="rounded border-gray-300 text-[#FF6A3D] focus:ring-[#FF6A3D]"
+                                />
+                                <span>Default Variant</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-xs text-gray-700">
+                                <input
+                                  type="checkbox"
+                                  checked={variant.isActive}
+                                  onChange={(e) => handleVariantChange(index, 'isActive', e.target.checked)}
+                                  className="rounded border-gray-300 text-[#FF6A3D] focus:ring-[#FF6A3D]"
+                                />
+                                <span>Active</span>
+                              </label>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="unitValue" className="block text-sm font-medium text-gray-700 mb-1">
-                          Unit Value *
-                        </label>
-                        <input
-                          type="number"
-                          id="unitValue"
-                          name="unitValue"
-                          value={formData.unitValue}
-                          onChange={handleInputChange}
-                          min="1"
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
-                            formErrors.unitValue ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="1"
-                        />
-                        {formErrors.unitValue && (
-                          <p className="mt-1 text-xs text-red-600">{formErrors.unitValue}</p>
-                        )}
-                      </div>
-
                       <div>
                         <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
                           Category *

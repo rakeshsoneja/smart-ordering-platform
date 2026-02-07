@@ -5,16 +5,26 @@ import ProductCard from '@/components/productCard'
 import { appConfig } from '@/lib/config'
 import axiosInstance from '@/lib/axiosConfig'
 
+interface Variant {
+  variantId: number
+  variantName: string
+  variantWeightGrams?: number
+  variantPrice: number
+  isDefaultVariant: boolean
+  isActive: boolean
+}
+
 interface Product {
   id: number
   name: string
   description: string
   price: number
-  unit: 'pc' | 'gms'
-  unitValue: number
+  unit?: 'pc' | 'gms' // Make optional since variants might not have this
+  unitValue?: number // Make optional since variants might not have this
   image?: string
   category: string
   status: 'active' | 'disabled'
+  variants?: Variant[] // ADD THIS - variants array
 }
 
 export default function Home() {

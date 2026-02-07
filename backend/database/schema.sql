@@ -37,6 +37,7 @@ END;
 $$ language 'plpgsql';
 
 -- Trigger to automatically update updated_at
+DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
 CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -62,12 +63,32 @@ CREATE INDEX IF NOT EXISTS idx_product_category ON products(category);
 CREATE INDEX IF NOT EXISTS idx_product_status ON products(status);
 
 -- Trigger to automatically update updated_at for products
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Product Variant table (ADDITIVE - does not modify existing products table)
+CREATE TABLE IF NOT EXISTS product_variant (
+    variant_id SERIAL PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    variant_name VARCHAR(100) NOT NULL,
+    variant_weight_grams INTEGER,
+    variant_price DECIMAL(10, 2) NOT NULL,
+    is_default_variant BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(product_id, variant_name)
+);
 
+-- Create indexes for product_variant
+CREATE INDEX IF NOT EXISTS idx_product_variant_product_id ON product_variant(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_variant_is_active ON product_variant(is_active);
+CREATE INDEX IF NOT EXISTS idx_product_variant_is_default ON product_variant(is_default_variant);
 
-
+-- Trigger to automatically update updated_at for product_variant
+CREATE TRIGGER update_product_variant_updated_at BEFORE UPDATE ON product_variant
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
 

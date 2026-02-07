@@ -45,22 +45,31 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                     ? `${unitValue} ${unitValue === 1 ? 'pc' : 'pcs'}`
                     : `${unitValue}g`
                   
+                  // Display variant name if available, otherwise use legacy unit label
+                  const displayLabel = item.variantName || unitLabel
+                  
                   return (
                     <div
-                      key={item.id}
+                      key={item.variantId ? `variant_${item.variantId}` : `product_${item.id}`}
                       className="flex items-center gap-3 sm:gap-4 py-3 sm:py-4 border-b border-gray-200 last:border-b-0"
                     >
-                      {/* Item Name with Unit - Left side, takes available space */}
+                      {/* Item Name with Unit/Variant - Left side, takes available space */}
                       <div className="flex-1 min-w-0 pr-2">
                         <h3 className="font-semibold text-gray-800 text-base sm:text-lg leading-tight">
-                          {item.name || 'Unknown Item'} ({unitLabel})
+                          {item.name || 'Unknown Item'}
+                          {displayLabel && ` (${displayLabel})`}
                         </h3>
+                        {item.variantName && (
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            ₹{price.toFixed(2)} per {item.variantName}
+                          </p>
+                        )}
                       </div>
                       
                       {/* Quantity Controls - Center */}
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                          onClick={() => updateQuantity(item.id, Math.max(1, quantity - 1))}
+                          onClick={() => updateQuantity(item.id, Math.max(1, quantity - 1), item.variantId)}
                           className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
                           aria-label="Decrease quantity"
                         >
@@ -68,7 +77,7 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                         </button>
                         <span className="w-8 sm:w-10 text-center font-semibold text-gray-800 text-base sm:text-lg">{quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.id, quantity + 1)}
+                          onClick={() => updateQuantity(item.id, quantity + 1, item.variantId)}
                           className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
                           aria-label="Increase quantity"
                         >
@@ -85,7 +94,7 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                       
                       {/* Delete Button - Far right */}
                       <button
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={() => removeFromCart(item.id, item.variantId)}
                         className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-red-100 hover:bg-red-200 active:bg-red-300 flex items-center justify-center text-red-600 touch-manipulation transition-all flex-shrink-0 ml-1"
                         aria-label="Remove item"
                       >
