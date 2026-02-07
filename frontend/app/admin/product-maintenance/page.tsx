@@ -142,7 +142,7 @@ export default function ProductMaintenancePage() {
     })
   }
 
-  const handleVariantChange = (index: number, field: keyof Variant, value: string | number | boolean) => {
+  const handleVariantChange = (index: number, field: keyof Variant, value: string | number | boolean | null) => {
     setVariants(prev => {
       const updated = [...prev]
       if (field === 'isDefaultVariant' && value === true) {
@@ -916,7 +916,7 @@ export default function ProductMaintenancePage() {
                                   type="number"
                                   min="0"
                                   value={variant.variantWeightGrams || ''}
-                                  onChange={(e) => handleVariantChange(index, 'variantWeightGrams', e.target.value ? parseInt(e.target.value) : undefined)}
+                                  onChange={(e) => handleVariantChange(index, 'variantWeightGrams', e.target.value ? parseInt(e.target.value) : null)}
                                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
                                   placeholder="250"
                                 />
