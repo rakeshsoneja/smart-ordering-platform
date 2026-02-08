@@ -8,7 +8,7 @@ interface CartProps {
 }
 
 export default function Cart({ onClose, onCheckout }: CartProps) {
-  const { cartItems, removeFromCart, updateQuantity, getTotalAmount } = useCart()
+  const { cartItems, removeFromCart, updateQuantity, getTotalAmount, stockAvailabilityMessage } = useCart()
   const totalAmount = getTotalAmount()
 
   return (
@@ -48,64 +48,83 @@ export default function Cart({ onClose, onCheckout }: CartProps) {
                   // Display variant name if available, otherwise use legacy unit label
                   const displayLabel = item.variantName || unitLabel
                   
+                  // Check if stock message applies to this item
+                  const itemStockMessage = stockAvailabilityMessage && 
+                    stockAvailabilityMessage.productId === item.id &&
+                    stockAvailabilityMessage.variantId === item.variantId
+                    ? stockAvailabilityMessage.message
+                    : null
+
+                  // Cart item unique key: product_id + variant_id (not just product_id or variant_id)
+                  const cartItemKey = item.variantId 
+                    ? `product_${item.id}_variant_${item.variantId}` 
+                    : `product_${item.id}_no_variant`
+                  
                   return (
-                    <div
-                      key={item.variantId ? `variant_${item.variantId}` : `product_${item.id}`}
-                      className="flex items-start gap-3 sm:gap-4 py-3 sm:py-4 border-b border-gray-200 last:border-b-0"
-                    >
-                      {/* Item Name with Unit/Variant - Left side, takes available space */}
-                      <div className="flex-1 min-w-0 pr-2">
-                        {/* Line 1: Product Name, Qty, Price */}
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-800 text-base sm:text-lg leading-tight flex-1">
-                            {item.name || 'Unknown Item'}
-                          </h3>
-                          <span className="text-xs sm:text-sm text-gray-600 flex-shrink-0">
-                            Qty: {quantity}
-                          </span>
-                          <div className="w-20 sm:w-24 text-right flex-shrink-0">
-                            <p className="font-semibold text-gray-800 text-base sm:text-lg">
-                              ₹ {itemTotal.toFixed(2)}
-                            </p>
+                    <div key={cartItemKey}>
+                      <div className="flex items-start gap-3 sm:gap-4 py-3 sm:py-4 border-b border-gray-200 last:border-b-0">
+                        {/* Item Name with Unit/Variant - Left side, takes available space */}
+                        <div className="flex-1 min-w-0 pr-2">
+                          {/* Line 1: Product Name, Qty, Price */}
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-800 text-base sm:text-lg leading-tight flex-1">
+                              {item.name || 'Unknown Item'}
+                            </h3>
+                            <span className="text-xs sm:text-sm text-gray-600 flex-shrink-0">
+                              Qty: {quantity}
+                            </span>
+                            <div className="w-20 sm:w-24 text-right flex-shrink-0">
+                              <p className="font-semibold text-gray-800 text-base sm:text-lg">
+                                ₹ {itemTotal.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Line 2: Variant on left, Quantity selector on right */}
+                          <div className="flex justify-between items-center w-full mt-1.5">
+                            {/* Variant display - Left aligned */}
+                            <div className="text-xs sm:text-sm text-gray-600 flex-shrink-0">
+                              {displayLabel || '\u00A0'}
+                            </div>
+                            
+                            {/* Quantity Controls - Right aligned */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => updateQuantity(item.id, Math.max(1, quantity - 1), item.variantId)}
+                                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
+                                aria-label="Decrease quantity"
+                              >
+                                −
+                              </button>
+                              <span className="w-8 sm:w-10 text-center font-semibold text-gray-800 text-base sm:text-lg">{quantity}</span>
+                              <button
+                                onClick={() => updateQuantity(item.id, quantity + 1, item.variantId)}
+                                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
+                                aria-label="Increase quantity"
+                              >
+                                +
+                              </button>
+                            </div>
                           </div>
                         </div>
                         
-                        {/* Line 2: Variant on left, Quantity selector on right */}
-                        <div className="flex justify-between items-center w-full mt-1.5">
-                          {/* Variant display - Left aligned */}
-                          <div className="text-xs sm:text-sm text-gray-600 flex-shrink-0">
-                            {displayLabel || '\u00A0'}
-                          </div>
-                          
-                          {/* Quantity Controls - Right aligned */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <button
-                              onClick={() => updateQuantity(item.id, Math.max(1, quantity - 1), item.variantId)}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
-                              aria-label="Decrease quantity"
-                            >
-                              −
-                            </button>
-                            <span className="w-8 sm:w-10 text-center font-semibold text-gray-800 text-base sm:text-lg">{quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(item.id, quantity + 1, item.variantId)}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 flex items-center justify-center text-lg sm:text-xl font-bold touch-manipulation transition-all shadow-sm"
-                              aria-label="Increase quantity"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
+                        {/* Delete Button - Far right */}
+                        <button
+                          onClick={() => removeFromCart(item.id, item.variantId)}
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-red-100 hover:bg-red-200 active:bg-red-300 flex items-center justify-center text-red-600 touch-manipulation transition-all flex-shrink-0 ml-1"
+                          aria-label="Remove item"
+                        >
+                          🗑️
+                        </button>
                       </div>
-                      
-                      {/* Delete Button - Far right */}
-                      <button
-                        onClick={() => removeFromCart(item.id, item.variantId)}
-                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-red-100 hover:bg-red-200 active:bg-red-300 flex items-center justify-center text-red-600 touch-manipulation transition-all flex-shrink-0 ml-1"
-                        aria-label="Remove item"
-                      >
-                        🗑️
-                      </button>
+                      {/* Stock Availability Message */}
+                      {itemStockMessage && (
+                        <div className="px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg mb-2">
+                          <p className="text-xs sm:text-sm text-orange-800 leading-tight">
+                            {itemStockMessage}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

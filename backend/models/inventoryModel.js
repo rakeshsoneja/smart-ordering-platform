@@ -125,7 +125,8 @@ const deductInventoryAtomically = async (productId, requestedQuantityGrams) => {
 };
 
 // Deduct inventory for multiple items atomically (within a transaction)
-// Each item calculates: requestedQuantityGrams = variantWeightGrams × quantity
+// Inventory is maintained at PRODUCT LEVEL (shared across all variants)
+// Groups cart items by product_id and calculates total grams per product
 // Returns { success: true } if all deductions successful, { success: false, failedItems: [...] } otherwise
 const deductInventoryForOrder = async (cartItems) => {
   // Start transaction
@@ -133,7 +134,11 @@ const deductInventoryForOrder = async (cartItems) => {
 
   try {
     const failedItems = [];
-
+    
+    // Group cart items by product_id
+    // Key: productId, Value: array of items for that product
+    const itemsByProduct = {};
+    
     for (const item of cartItems) {
       const { variantId, quantity } = item;
       
@@ -150,7 +155,7 @@ const deductInventoryForOrder = async (cartItems) => {
           productId = variantResult.rows[0].product_id;
           variantWeightGrams = variantResult.rows[0].variant_weight_grams;
         } else {
-          // Variant not found - skip this item
+          // Variant not found - add to failed items
           failedItems.push({
             productId: null,
             variantId,
@@ -162,7 +167,7 @@ const deductInventoryForOrder = async (cartItems) => {
       }
       
       if (!productId) {
-        // No product ID available - skip this item
+        // No product ID available - add to failed items
         failedItems.push({
           productId: null,
           variantId,
@@ -172,26 +177,58 @@ const deductInventoryForOrder = async (cartItems) => {
         continue;
       }
       
-      // Calculate requested quantity in grams
-      // requestedQuantityGrams = variantWeightGrams × quantity
-      let requestedQuantityGrams = 0;
+      // Initialize product group if not exists
+      if (!itemsByProduct[productId]) {
+        itemsByProduct[productId] = [];
+      }
       
-      if (variantId && variantWeightGrams) {
-        // For variant-based products, multiply quantity by variant weight
-        requestedQuantityGrams = quantity * variantWeightGrams;
-      } else {
-        // Legacy products without variants - quantity is already in base units
-        // For backward compatibility, assume quantity is in grams
-        requestedQuantityGrams = quantity;
+      // Add item to product group
+      itemsByProduct[productId].push({
+        variantId,
+        quantity,
+        variantWeightGrams,
+      });
+    }
+
+    // If we already have failed items (invalid variants), rollback
+    if (failedItems.length > 0) {
+      await query('ROLLBACK');
+      return { success: false, failedItems };
+    }
+
+    // For each product, calculate total requested grams across ALL variants
+    for (const productId in itemsByProduct) {
+      const productItems = itemsByProduct[productId];
+      let totalRequestedGrams = 0;
+      
+      // Sum up grams from all variants of this product
+      for (const item of productItems) {
+        const { variantWeightGrams, quantity } = item;
+        
+        if (variantWeightGrams) {
+          // For variant-based products, multiply quantity by variant weight
+          totalRequestedGrams += quantity * variantWeightGrams;
+        } else {
+          // Legacy products without variants - quantity is already in base units
+          // For backward compatibility, assume quantity is in grams
+          totalRequestedGrams += quantity;
+        }
       }
 
-      const result = await deductInventoryAtomically(productId, requestedQuantityGrams);
+      // Deduct total grams for this product atomically
+      const result = await deductInventoryAtomically(parseInt(productId), totalRequestedGrams);
       
       if (!result.success) {
+        // Get product name for error message
+        const { getProductById } = require('./productModel');
+        const product = await getProductById(parseInt(productId));
+        const productName = product ? product.name : 'Product';
+        
         failedItems.push({
-          productId,
-          variantId,
-          requestedQuantityGrams: result.requestedQuantityGrams,
+          productId: parseInt(productId),
+          variantId: null, // Product-level failure
+          productName,
+          requestedQuantityGrams: totalRequestedGrams,
           availableQuantityGrams: result.availableQuantityGrams,
         });
       }

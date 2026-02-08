@@ -57,9 +57,17 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
       const inventoryDeduction = await deductInventoryForOrder(cartItems);
       
       if (!inventoryDeduction.success) {
+        // Get product name from failed items for user-friendly error message
+        const failedItem = inventoryDeduction.failedItems && inventoryDeduction.failedItems.length > 0
+          ? inventoryDeduction.failedItems[0]
+          : null;
+        const productName = failedItem && failedItem.productName
+          ? failedItem.productName
+          : 'item';
+        
         return res.status(400).json({
           success: false,
-          error: 'Sorry, item went out of stock while placing your order',
+          error: `Sorry, ${productName} went out of stock while placing your order`,
           failedItems: inventoryDeduction.failedItems,
         });
       }
@@ -154,19 +162,27 @@ router.post('/verify-payment', validateRequest(paymentVerificationRules), async 
     const cartItems = order.cart_items; // JSONB field, already parsed by PostgreSQL
     const inventoryDeduction = await deductInventoryForOrder(cartItems);
     
-    if (!inventoryDeduction.success) {
-      // Update order status to indicate inventory failure
-      await updateOrderStatus(order.id, 'payment_failed', {
-        razorpayPaymentId,
-        razorpaySignature,
-      });
-      
-      return res.status(400).json({
-        success: false,
-        error: 'Sorry, item went out of stock while placing your order',
-        failedItems: inventoryDeduction.failedItems,
-      });
-    }
+      if (!inventoryDeduction.success) {
+        // Update order status to indicate inventory failure
+        await updateOrderStatus(order.id, 'payment_failed', {
+          razorpayPaymentId,
+          razorpaySignature,
+        });
+        
+        // Get product name from failed items for user-friendly error message
+        const failedItem = inventoryDeduction.failedItems && inventoryDeduction.failedItems.length > 0
+          ? inventoryDeduction.failedItems[0]
+          : null;
+        const productName = failedItem && failedItem.productName
+          ? failedItem.productName
+          : 'item';
+        
+        return res.status(400).json({
+          success: false,
+          error: `Sorry, ${productName} went out of stock while placing your order`,
+          failedItems: inventoryDeduction.failedItems,
+        });
+      }
 
     // Update order status
     const updatedOrder = await updateOrderStatus(order.id, 'paid', {

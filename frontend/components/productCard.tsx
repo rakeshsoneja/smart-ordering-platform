@@ -33,7 +33,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
-  const { cartItems, addToCart, updateQuantity, removeFromCart } = useCart()
+  const { cartItems, addToCart, updateQuantity, removeFromCart, stockAvailabilityMessage, clearStockMessage } = useCart()
   
   // Determine if product uses variants
   const availableVariants = (product.variants || []).filter(v => v.isActive)
@@ -103,9 +103,10 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     ? effectiveSelectedVariant.variantPrice
     : (product.price || 0)
 
-  // Find cart item (check by variantId if using variants, else by product id)
+  // Find cart item (check by product_id + variant_id, not just variant_id)
+  // Cart item uniqueness: product_id + variant_id (not just product_id or variant_id)
   const cartItem = hasVariants && effectiveSelectedVariantId
-    ? cartItems.find(item => item.variantId === effectiveSelectedVariantId)
+    ? cartItems.find(item => item.id === product.id && item.variantId === effectiveSelectedVariantId)
     : cartItems.find(item => item.id === product.id && !item.variantId)
   
   const quantity = cartItem?.quantity || 0
@@ -129,6 +130,23 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       }
     }
   }, [hasVariants, selectedVariantId, availableQuantityGrams, isOutOfStock])
+
+  // Check if stock message applies to this product/variant
+  const relevantStockMessage = stockAvailabilityMessage && 
+    stockAvailabilityMessage.productId === product.id &&
+    (hasVariants 
+      ? stockAvailabilityMessage.variantId === effectiveSelectedVariantId
+      : !stockAvailabilityMessage.variantId)
+    ? stockAvailabilityMessage.message
+    : null
+
+  // Clear message when variant changes to an available one
+  useEffect(() => {
+    if (relevantStockMessage && isSelectedVariantAvailable && !isOutOfStock) {
+      clearStockMessage(product.id, effectiveSelectedVariantId || undefined)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSelectedVariantId, isSelectedVariantAvailable, isOutOfStock])
   
   // Legacy unit label (for backward compatibility)
   const unitLabel = !hasVariants && product.unit
@@ -203,10 +221,9 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       return
     }
     
-    // If there's an item in cart with different variant, remove it first
-    if (cartItem && cartItem.variantId !== variantId) {
-      removeFromCart(product.id, cartItem.variantId)
-    }
+    // Just change the selected variant for adding to cart
+    // Do NOT remove existing cart items - multiple variants can coexist in cart
+    // The variant dropdown only controls which variant to add, not which variants are in cart
     setSelectedVariantId(variantId)
   }
 
@@ -318,43 +335,63 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         </div>
 
         {/* Add to Cart / Quantity Stepper - Full Width, Aligned at Bottom */}
-        <div className="mt-auto">
+        <div className="mt-auto space-y-2">
           {!inCart ? (
-            <button
-              onClick={handleAddToCart}
-              disabled={isOutOfStock || (hasVariants && !isSelectedVariantAvailable)}
-              className={`w-full px-3 py-2.5 lg:py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 lg:gap-2 font-medium text-xs lg:text-sm shadow-sm ${
-                isOutOfStock || (hasVariants && !isSelectedVariantAvailable)
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gray-900 hover:bg-gray-800 text-white hover:shadow'
-              }`}
-            >
-              <Plus className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span>Add to Cart</span>
-            </button>
-          ) : (
-            <div className="flex items-center justify-center gap-2 bg-gray-50 rounded-lg px-2 py-2">
-              <button
-                onClick={handleRemoveFromCart}
-                className="w-7 h-7 lg:w-8 lg:h-8 flex items-center justify-center text-gray-700 hover:bg-white rounded transition-colors flex-shrink-0"
-              >
-                <Minus className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              </button>
-              <span className="min-w-[20px] lg:min-w-[24px] text-center text-gray-900 text-sm lg:text-base font-semibold">
-                {quantity}
-              </span>
+            <>
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock || (hasVariants && !isSelectedVariantAvailable)}
-                className={`w-7 h-7 lg:w-8 lg:h-8 flex items-center justify-center rounded transition-colors flex-shrink-0 ${
+                className={`w-full px-3 py-2.5 lg:py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 lg:gap-2 font-medium text-xs lg:text-sm shadow-sm ${
                   isOutOfStock || (hasVariants && !isSelectedVariantAvailable)
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-gray-700 hover:bg-white'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-900 hover:bg-gray-800 text-white hover:shadow'
                 }`}
               >
                 <Plus className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                <span>Add to Cart</span>
               </button>
-            </div>
+              {/* Stock Availability Message */}
+              {relevantStockMessage && (
+                <div className="px-2 py-1.5 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="text-xs lg:text-sm text-orange-800 leading-tight">
+                    {relevantStockMessage}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-center gap-2 bg-gray-50 rounded-lg px-2 py-2">
+                <button
+                  onClick={handleRemoveFromCart}
+                  className="w-7 h-7 lg:w-8 lg:h-8 flex items-center justify-center text-gray-700 hover:bg-white rounded transition-colors flex-shrink-0"
+                >
+                  <Minus className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                </button>
+                <span className="min-w-[20px] lg:min-w-[24px] text-center text-gray-900 text-sm lg:text-base font-semibold">
+                  {quantity}
+                </span>
+                <button
+                  onClick={handleAddToCart}
+                  disabled={isOutOfStock || (hasVariants && !isSelectedVariantAvailable)}
+                  className={`w-7 h-7 lg:w-8 lg:h-8 flex items-center justify-center rounded transition-colors flex-shrink-0 ${
+                    isOutOfStock || (hasVariants && !isSelectedVariantAvailable)
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-gray-700 hover:bg-white'
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                </button>
+              </div>
+              {/* Stock Availability Message */}
+              {relevantStockMessage && (
+                <div className="px-2 py-1.5 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="text-xs lg:text-sm text-orange-800 leading-tight">
+                    {relevantStockMessage}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
