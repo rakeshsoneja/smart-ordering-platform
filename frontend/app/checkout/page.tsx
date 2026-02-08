@@ -155,6 +155,8 @@ export default function CheckoutPage() {
     try {
       // Prepare cart items for backend
       const cartItemsForBackend = cartItems.map(item => ({
+        id: item.id, // Product ID
+        productId: item.id, // Product ID (for inventory deduction)
         name: item.name,
         quantity: item.quantity,
         unit: item.unit || null, // Legacy field

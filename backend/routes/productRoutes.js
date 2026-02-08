@@ -11,6 +11,7 @@ const {
   getVariantsByProductId,
   getDefaultVariantByProductId,
 } = require('../models/variantModel');
+const { getInventoryStatus } = require('../models/inventoryModel');
 
 /**
  * Product Routes
@@ -47,6 +48,9 @@ router.get('/', async (req, res, next) => {
           updatedAt: product.updated_at,
         };
 
+        // Get product-level inventory (shared across all variants)
+        const inventoryStatus = await getInventoryStatus(product.id);
+        
         if (variants.length > 0) {
           // Product has variants
           productData.variants = variants.map(v => ({
@@ -67,6 +71,15 @@ router.get('/', async (req, res, next) => {
           productData.price = parseFloat(product.price);
           productData.unit = product.unit;
           productData.unitValue = product.unit_value;
+        }
+        
+        // Add product-level inventory info
+        if (inventoryStatus) {
+          productData.availableQuantityGrams = inventoryStatus.availableQuantityGrams;
+          productData.isOutOfStock = inventoryStatus.isOutOfStock;
+        } else {
+          productData.availableQuantityGrams = null;
+          productData.isOutOfStock = false;
         }
 
         return productData;
@@ -120,6 +133,9 @@ router.get('/:productId', async (req, res, next) => {
       updatedAt: product.updated_at,
     };
 
+    // Get product-level inventory (shared across all variants)
+    const inventoryStatus = await getInventoryStatus(productId);
+    
     if (variants.length > 0) {
       // Product has variants
       productData.variants = variants.map(v => ({
@@ -140,6 +156,15 @@ router.get('/:productId', async (req, res, next) => {
       productData.price = parseFloat(product.price);
       productData.unit = product.unit;
       productData.unitValue = product.unit_value;
+    }
+    
+    // Add product-level inventory info
+    if (inventoryStatus) {
+      productData.availableQuantityGrams = inventoryStatus.availableQuantityGrams;
+      productData.isOutOfStock = inventoryStatus.isOutOfStock;
+    } else {
+      productData.availableQuantityGrams = null;
+      productData.isOutOfStock = false;
     }
 
     res.json({

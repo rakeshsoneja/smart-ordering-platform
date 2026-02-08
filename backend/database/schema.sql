@@ -87,7 +87,27 @@ CREATE INDEX IF NOT EXISTS idx_product_variant_is_active ON product_variant(is_a
 CREATE INDEX IF NOT EXISTS idx_product_variant_is_default ON product_variant(is_default_variant);
 
 -- Trigger to automatically update updated_at for product_variant
+DROP TRIGGER IF EXISTS update_product_variant_updated_at ON product_variant;
 CREATE TRIGGER update_product_variant_updated_at BEFORE UPDATE ON product_variant
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Product Inventory table (ADDITIVE - does not modify existing tables)
+-- Inventory is maintained at PRODUCT level (not variant level)
+-- All variants share the same product inventory
+CREATE TABLE IF NOT EXISTS product_inventory (
+    inventory_id SERIAL PRIMARY KEY,
+    product_id INTEGER NOT NULL UNIQUE REFERENCES products(id) ON DELETE CASCADE,
+    available_quantity_grams INTEGER NOT NULL DEFAULT 0 CHECK (available_quantity_grams >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index for product_inventory
+CREATE INDEX IF NOT EXISTS idx_product_inventory_product_id ON product_inventory(product_id);
+
+-- Trigger to automatically update updated_at for product_inventory
+DROP TRIGGER IF EXISTS update_product_inventory_updated_at ON product_inventory;
+CREATE TRIGGER update_product_inventory_updated_at BEFORE UPDATE ON product_inventory
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 

@@ -4,6 +4,7 @@ const { validateRequest, orderValidationRules, paymentVerificationRules } = requ
 const { createOrder, getOrderById, getOrderByRazorpayOrderId, updateOrderStatus, getOrdersByCustomerPhone } = require('../models/orderModel');
 const { createRazorpayOrder, verifyPaymentSignature } = require('../services/razorpayService');
 const { sendOrderConfirmationSMS, sendPaymentSuccessSMS } = require('../services/smsService');
+const { deductInventoryForOrder } = require('../models/inventoryModel');
 
 /**
  * Order Routes
@@ -49,6 +50,19 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
     } else if (paymentMode === 'cod') {
       // For COD, order is confirmed immediately
       orderStatus = 'confirmed';
+    }
+
+    // For COD orders, deduct inventory atomically before creating order
+    if (paymentMode === 'cod') {
+      const inventoryDeduction = await deductInventoryForOrder(cartItems);
+      
+      if (!inventoryDeduction.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Sorry, item went out of stock while placing your order',
+          failedItems: inventoryDeduction.failedItems,
+        });
+      }
     }
 
     // Create order in database
@@ -133,6 +147,24 @@ router.post('/verify-payment', validateRequest(paymentVerificationRules), async 
       return res.status(400).json({
         success: false,
         error: 'Invalid payment signature',
+      });
+    }
+
+    // Deduct inventory atomically before confirming payment
+    const cartItems = order.cart_items; // JSONB field, already parsed by PostgreSQL
+    const inventoryDeduction = await deductInventoryForOrder(cartItems);
+    
+    if (!inventoryDeduction.success) {
+      // Update order status to indicate inventory failure
+      await updateOrderStatus(order.id, 'payment_failed', {
+        razorpayPaymentId,
+        razorpaySignature,
+      });
+      
+      return res.status(400).json({
+        success: false,
+        error: 'Sorry, item went out of stock while placing your order',
+        failedItems: inventoryDeduction.failedItems,
       });
     }
 

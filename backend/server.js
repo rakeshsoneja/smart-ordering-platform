@@ -11,6 +11,7 @@ const productRoutes = require('./routes/productRoutes');
 const adminProductRoutes = require('./routes/adminProductRoutes');
 const adminOrderRoutes = require('./routes/adminOrderRoutes');
 const variantRoutes = require('./routes/variantRoutes');
+const inventoryRoutes = require('./routes/inventoryRoutes');
 const initSchema = require('./database/initSchema');
 const seedProducts = require('./database/seedProducts');
 
@@ -57,6 +58,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
 app.use('/api/variants', variantRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // 404 handler
 app.use((req, res) => {

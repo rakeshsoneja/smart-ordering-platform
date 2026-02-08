@@ -50,6 +50,8 @@ export default function ProductMaintenancePage() {
   const [uploading, setUploading] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [variants, setVariants] = useState<Variant[]>([])
+  const [inventoryData, setInventoryData] = useState<{ availableQuantityGrams: number; inventoryId?: number } | null>(null)
+  const [inventoryLoading, setInventoryLoading] = useState(false)
 
   // Fetch products
   const fetchProducts = async () => {
@@ -406,6 +408,26 @@ export default function ProductMaintenancePage() {
     setShowModal(true)
   }
 
+  // Fetch inventory for a product (product-level only)
+  const fetchInventory = async (productId: number) => {
+    try {
+      const response = await axiosInstance.get(`/api/inventory/product/${productId}`)
+      if (response.data.success && response.data.inventory.length > 0) {
+        // Get the first (and only) inventory record for the product
+        const inv = response.data.inventory[0]
+        setInventoryData({
+          availableQuantityGrams: inv.availableQuantityGrams || 0,
+          inventoryId: inv.inventoryId,
+        })
+      } else {
+        setInventoryData(null)
+      }
+    } catch (err) {
+      console.error('Error fetching inventory:', err)
+      setInventoryData(null)
+    }
+  }
+
   // Open modal for edit
   const handleEditProduct = async (product: Product) => {
     setEditingProduct(product)
@@ -441,6 +463,9 @@ export default function ProductMaintenancePage() {
       setVariants([])
     }
     
+    // Fetch inventory for this product
+    await fetchInventory(product.id)
+    
     setSelectedImage(null)
     setImagePreview(product.image || null) // Show existing image as preview
     setFormErrors({})
@@ -456,6 +481,46 @@ export default function ProductMaintenancePage() {
     setImagePreview(null)
     setFormErrors({})
     setUploading(false)
+    setInventoryData(null)
+    setInventoryLoading(false)
+  }
+
+  // Update inventory for a product (product-level only)
+  const handleUpdateInventory = async (productId: number, quantityGrams: number) => {
+    setInventoryLoading(true)
+    
+    try {
+      await axiosInstance.post('/api/inventory', {
+        productId,
+        availableQuantityGrams: quantityGrams,
+      })
+      
+      // Refresh inventory data
+      await fetchInventory(productId)
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to update inventory')
+    } finally {
+      setInventoryLoading(false)
+    }
+  }
+
+  // Add quantity to inventory (product-level only)
+  const handleAddInventory = async (productId: number, quantityToAddGrams: number) => {
+    setInventoryLoading(true)
+    
+    try {
+      await axiosInstance.post('/api/inventory/add', {
+        productId,
+        quantityToAdd: quantityToAddGrams,
+      })
+      
+      // Refresh inventory data
+      await fetchInventory(productId)
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to add inventory')
+    } finally {
+      setInventoryLoading(false)
+    }
   }
 
   // Handle delete
@@ -963,10 +1028,59 @@ export default function ProductMaintenancePage() {
                                 <span>Active</span>
                               </label>
                             </div>
+
                           </div>
                         ))}
                       </div>
                     </div>
+
+                    {/* Inventory Management for Product (product-level, shared across all variants) */}
+                    {editingProduct && (
+                      <div className="mt-6 pt-6 border-t border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Inventory Management (Product Level)
+                        </label>
+                        <p className="text-xs text-gray-600 mb-3">
+                          {variants.length > 0 
+                            ? 'Inventory is shared across all variants. Orders deduct from this total based on variant weight × quantity.'
+                            : 'Set the total available inventory for this product in grams.'}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-600 mb-1">Available Quantity (grams)</p>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={inventoryData?.availableQuantityGrams ?? ''}
+                                onChange={(e) => {
+                                  const newQuantity = e.target.value ? parseInt(e.target.value) : 0
+                                  handleUpdateInventory(editingProduct.id, newQuantity)
+                                }}
+                                disabled={inventoryLoading}
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent disabled:opacity-50"
+                                placeholder="0"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleAddInventory(editingProduct.id, 1000)
+                                }}
+                                disabled={inventoryLoading}
+                                className="px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+                              >
+                                +1kg
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {inventoryData?.availableQuantityGrams !== undefined
+                                ? `${inventoryData.availableQuantityGrams}g available`
+                                : 'No inventory record (treated as in stock)'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
