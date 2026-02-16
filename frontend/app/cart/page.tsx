@@ -14,8 +14,8 @@ export default function CartPage() {
     router.push('/checkout')
   }
 
-  const handleQuantityChange = async (id: number, newQuantity: number, variantId?: number) => {
-    await updateQuantity(id, newQuantity, variantId)
+  const handleQuantityChange = async (id: number, newQuantity: number, variantId?: number): Promise<boolean> => {
+    return await updateQuantity(id, newQuantity, variantId)
   }
 
   if (cartItems.length === 0) {
