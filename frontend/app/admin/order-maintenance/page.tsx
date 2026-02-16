@@ -156,10 +156,10 @@ export default function OrderMaintenancePage() {
       setError('') // Clear any previous errors
       
       console.log('Making API call to:', `/api/admin/orders/${orderId}/status`)
-      console.log('Request body:', { order_status: newStatus })
+      console.log('Request body:', { status: newStatus })
       
-      const response = await axiosInstance.patch(`/api/admin/orders/${orderId}/status`, {
-        order_status: newStatus,
+      const response = await axiosInstance.put(`/api/admin/orders/${orderId}/status`, {
+        status: newStatus,
       })
       
       console.log('API response received:', response)

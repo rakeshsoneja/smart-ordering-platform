@@ -229,7 +229,9 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
   return (
     <div
-      className="bg-white rounded-lg lg:rounded-xl shadow-sm hover:shadow-md lg:hover:shadow-lg transition-all duration-200 overflow-hidden flex flex-col border border-gray-100"
+      className={`bg-white rounded-lg lg:rounded-xl shadow-sm transition-all duration-200 overflow-hidden flex flex-col border border-gray-100 ${
+        isOutOfStock ? 'opacity-70' : 'hover:shadow-md lg:hover:shadow-lg'
+      }`}
     >
       {/* Product Image - Larger on Desktop */}
       <div className="w-full h-32 lg:h-64 bg-gradient-to-br from-[#FFF8F0] to-[#FFE4C4] flex items-center justify-center relative overflow-hidden">
@@ -254,12 +256,12 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           {product.image && !product.image.startsWith('http') ? product.image : '🍬'}
         </span>
         
-        {/* Out of Stock Overlay */}
+        {/* Out of Stock Overlay - modern ecommerce style */}
         {isOutOfStock && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-            <div className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm lg:text-base shadow-lg">
-              OUT OF STOCK
-            </div>
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none transition-all duration-200">
+            <span className="px-4 py-2 rounded-full bg-black/60 text-white text-xs lg:text-sm font-semibold tracking-[0.18em] uppercase shadow-md">
+              Out of stock
+            </span>
           </div>
         )}
       </div>

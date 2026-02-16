@@ -5,6 +5,8 @@ const { createOrder, getOrderById, getOrderByRazorpayOrderId, updateOrderStatus,
 const { createRazorpayOrder, verifyPaymentSignature } = require('../services/razorpayService');
 const { sendOrderConfirmationSMS, sendPaymentSuccessSMS } = require('../services/smsService');
 const { deductInventoryForOrder } = require('../models/inventoryModel');
+// WhatsApp integration commented out - using SMS only
+// const { sendOrderConfirmationWhatsApp } = require('../whatsapp/whatsAppServices');
 
 /**
  * Order Routes
@@ -95,6 +97,10 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
         amount: amount,
         estimatedDelivery: estimatedDelivery,
       });
+
+      // WhatsApp notification commented out - using SMS only
+      // sendOrderConfirmationWhatsApp(customerPhone, customerName, order.id)
+      //   .catch(console.error);
     }
 
     res.status(201).json({
@@ -204,6 +210,10 @@ router.post('/verify-payment', validateRequest(paymentVerificationRules), async 
       amount: order.amount,
       estimatedDelivery: estimatedDelivery,
     });
+
+    // WhatsApp notification commented out - using SMS only
+    // sendOrderConfirmationWhatsApp(order.customer_phone, order.customer_name, order.id)
+    //   .catch(console.error);
 
     res.json({
       success: true,

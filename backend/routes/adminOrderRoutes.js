@@ -113,7 +113,7 @@ router.put('/:id/status', async (req, res, next) => {
       });
     }
 
-    const validStatuses = ['pending', 'confirmed', 'paid', 'payment_pending', 'payment_failed', 'cancelled'];
+    const validStatuses = ['pending', 'confirmed', 'paid', 'payment_pending', 'payment_failed', 'cancelled', 'completed'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,

@@ -9,11 +9,13 @@ interface CartItemProps {
   image?: string
   quantity: number
   price: number
+  variantId?: number
   variantName?: string
   unit?: 'pc' | 'gms'
   unitValue?: number
-  onQuantityChange: (id: number, newQuantity: number) => void
-  onRemove: (id: number) => void
+  stockMessage?: string | null
+  onQuantityChange: (id: number, newQuantity: number, variantId?: number) => Promise<boolean>
+  onRemove: (id: number, variantId?: number) => void
 }
 
 export function CartItem({
@@ -23,9 +25,11 @@ export function CartItem({
   image,
   quantity,
   price,
+  variantId,
   variantName,
   unit,
   unitValue,
+  stockMessage,
   onQuantityChange,
   onRemove,
 }: CartItemProps) {
@@ -37,20 +41,29 @@ export function CartItem({
     : `${unitValue || 1}g`
   const displayLabel = variantName || (unit ? unitLabel : null)
 
-  const handleDecrease = () => {
+  const handleDecrease = async () => {
     if (quantity > 1) {
-      onQuantityChange(id, quantity - 1)
+      await onQuantityChange(id, quantity - 1, variantId)
     } else {
-      onRemove(id)
+      onRemove(id, variantId)
     }
   }
 
-  const handleIncrease = () => {
-    onQuantityChange(id, quantity + 1)
+  const handleIncrease = async () => {
+    await onQuantityChange(id, quantity + 1, variantId)
   }
 
   return (
     <div>
+      {/* Stock Availability Message - Show at top if exists */}
+      {stockMessage && (
+        <div className="px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg mb-2">
+          <p className="text-xs sm:text-sm text-orange-800 leading-tight">
+            {stockMessage}
+          </p>
+        </div>
+      )}
+
       {/* Mobile Layout */}
       <div className="lg:hidden">
         {/* First Row: Product Name, Qty Label, Price, Delete */}
@@ -78,7 +91,7 @@ export function CartItem({
 
             {/* Delete Button */}
             <button
-              onClick={() => onRemove(id)}
+              onClick={() => onRemove(id, variantId)}
               className="p-1 hover:bg-gray-50 rounded transition-colors flex-shrink-0"
               aria-label={`Remove ${name}`}
             >
@@ -193,7 +206,7 @@ export function CartItem({
 
         {/* Delete Button */}
         <button
-          onClick={() => onRemove(id)}
+          onClick={() => onRemove(id, variantId)}
           className="p-2 hover:bg-gray-50 rounded-lg transition-colors flex-shrink-0"
           aria-label={`Remove ${name}`}
         >

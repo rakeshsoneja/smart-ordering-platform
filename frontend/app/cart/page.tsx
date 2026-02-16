@@ -7,15 +7,15 @@ import { CartItem } from '@/components/cart-item'
 
 export default function CartPage() {
   const router = useRouter()
-  const { cartItems, removeFromCart, updateQuantity, getTotalAmount } = useCart()
+  const { cartItems, removeFromCart, updateQuantity, getTotalAmount, stockAvailabilityMessage } = useCart()
   const totalAmount = getTotalAmount()
 
   const handleCheckout = () => {
     router.push('/checkout')
   }
 
-  const handleQuantityChange = (id: number, newQuantity: number) => {
-    updateQuantity(id, newQuantity)
+  const handleQuantityChange = async (id: number, newQuantity: number, variantId?: number) => {
+    await updateQuantity(id, newQuantity, variantId)
   }
 
   if (cartItems.length === 0) {
@@ -48,23 +48,34 @@ export default function CartPage() {
           {/* Left Column: Cart Items */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 md:p-6 mb-4 sm:mb-6 lg:mb-0">
-              {cartItems.map((item, index) => (
-                <div key={item.id} className={index < cartItems.length - 1 ? 'border-b border-gray-200 pb-3 mb-3 lg:pb-4 lg:mb-4' : ''}>
-                  <CartItem
-                    id={item.id}
-                    name={item.name}
-                    description={item.description}
-                    image={item.image}
-                    quantity={item.quantity}
-                    price={item.price}
-                    variantName={item.variantName}
-                    unit={item.unit}
-                    unitValue={item.unitValue}
-                    onQuantityChange={handleQuantityChange}
-                    onRemove={removeFromCart}
-                  />
-                </div>
-              ))}
+              {cartItems.map((item, index) => {
+                // Check if stock message applies to this item
+                const itemStockMessage = stockAvailabilityMessage && 
+                  stockAvailabilityMessage.productId === item.id &&
+                  stockAvailabilityMessage.variantId === item.variantId
+                  ? stockAvailabilityMessage.message
+                  : null
+
+                return (
+                  <div key={item.variantId ? `product_${item.id}_variant_${item.variantId}` : `product_${item.id}_no_variant`} className={index < cartItems.length - 1 ? 'border-b border-gray-200 pb-3 mb-3 lg:pb-4 lg:mb-4' : ''}>
+                    <CartItem
+                      id={item.id}
+                      name={item.name}
+                      description={item.description}
+                      image={item.image}
+                      quantity={item.quantity}
+                      price={item.price}
+                      variantId={item.variantId}
+                      variantName={item.variantName}
+                      unit={item.unit}
+                      unitValue={item.unitValue}
+                      stockMessage={itemStockMessage}
+                      onQuantityChange={handleQuantityChange}
+                      onRemove={removeFromCart}
+                    />
+                  </div>
+                )
+              })}
             </div>
           </div>
 

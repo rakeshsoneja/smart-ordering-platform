@@ -12,6 +12,8 @@ const adminProductRoutes = require('./routes/adminProductRoutes');
 const adminOrderRoutes = require('./routes/adminOrderRoutes');
 const variantRoutes = require('./routes/variantRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
+// WhatsApp integration commented out - using SMS only
+// const whatsAppWebhook = require('./whatsapp/whatsAppWebhook');
 const initSchema = require('./database/initSchema');
 const seedProducts = require('./database/seedProducts');
 
@@ -59,6 +61,9 @@ app.use('/api/admin/products', adminProductRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
 app.use('/api/variants', variantRoutes);
 app.use('/api/inventory', inventoryRoutes);
+
+// WhatsApp Webhook Routes - COMMENTED OUT (using SMS only)
+// app.use('/', whatsAppWebhook);
 
 // 404 handler
 app.use((req, res) => {
