@@ -21,6 +21,8 @@ router.get('/', async (req, res, next) => {
       success: true,
       orders: orders.map(order => {
         const amount = order.amount != null ? parseFloat(order.amount) : 0
+        const deliveryCharge = order.delivery_charge != null ? parseFloat(order.delivery_charge) : 0
+        const itemTotal = amount - deliveryCharge
         return {
           id: order.id,
           customerName: order.customer_name,
@@ -28,6 +30,9 @@ router.get('/', async (req, res, next) => {
           deliveryAddress: order.delivery_address,
           cartItems: order.cart_items,
           amount: isNaN(amount) ? 0 : amount,
+          itemTotal: isNaN(itemTotal) ? 0 : itemTotal,
+          deliveryCharge: isNaN(deliveryCharge) ? 0 : deliveryCharge,
+          totalWeightGrams: order.total_weight_grams,
           paymentMode: order.payment_mode,
           status: order.status,
           razorpayOrderId: order.razorpay_order_id,
@@ -68,6 +73,8 @@ router.get('/:id', async (req, res, next) => {
     }
 
     const amount = order.amount != null ? parseFloat(order.amount) : 0
+    const deliveryCharge = order.delivery_charge != null ? parseFloat(order.delivery_charge) : 0
+    const itemTotal = amount - deliveryCharge
     res.json({
       success: true,
       order: {
@@ -77,6 +84,9 @@ router.get('/:id', async (req, res, next) => {
         deliveryAddress: order.delivery_address,
         cartItems: order.cart_items,
         amount: isNaN(amount) ? 0 : amount,
+        itemTotal: isNaN(itemTotal) ? 0 : itemTotal,
+        deliveryCharge: isNaN(deliveryCharge) ? 0 : deliveryCharge,
+        totalWeightGrams: order.total_weight_grams,
         paymentMode: order.payment_mode,
         status: order.status,
         razorpayOrderId: order.razorpay_order_id,

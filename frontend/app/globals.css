@@ -162,6 +162,96 @@ html {
   animation: slide-up 0.4s ease-out;
 }
 
+/* Print styles for order receipt */
+.print-receipt-container {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+@media print {
+  /* Step 1: Hide everything by default using visibility */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Step 2: Show ONLY the print receipt and all its descendants */
+  .print-receipt-container,
+  .print-receipt-container * {
+    visibility: visible !important;
+  }
+  
+  /* Step 3: Ensure print receipt container is properly displayed and positioned */
+  .print-receipt-container {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    background: white !important;
+    padding: 1.5cm !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    page-break-after: avoid;
+    color: black !important;
+    z-index: 99999 !important;
+  }
+  
+  /* Step 4: Ensure all content inside is visible and properly displayed */
+  .print-receipt-container * {
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Step 5: Ensure specific display types work correctly */
+  .print-receipt-container .flex {
+    display: flex !important;
+  }
+  
+  .print-receipt-container h1,
+  .print-receipt-container h2,
+  .print-receipt-container h3,
+  .print-receipt-container p,
+  .print-receipt-container div {
+    display: block !important;
+  }
+  
+  .print-receipt-container span {
+    display: inline !important;
+  }
+  
+  /* Step 6: Ensure spacing utilities work */
+  .print-receipt-container .space-y-4 > * + * {
+    margin-top: 1rem !important;
+  }
+  
+  .print-receipt-container .space-y-1 > * + * {
+    margin-top: 0.25rem !important;
+  }
+  
+  /* Page setup */
+  @page {
+    margin: 0;
+    size: A4;
+  }
+  
+  /* Reset body and html for clean print */
+  html, body {
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    background: white;
+    color: black;
+  }
+}
+
 /* Cart table styles */
 .cart-table {
   width: 100%;

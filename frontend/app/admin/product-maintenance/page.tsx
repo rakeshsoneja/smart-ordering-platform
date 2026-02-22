@@ -52,6 +52,7 @@ export default function ProductMaintenancePage() {
   const [variants, setVariants] = useState<Variant[]>([])
   const [inventoryData, setInventoryData] = useState<{ availableQuantityGrams: number; inventoryId?: number } | null>(null)
   const [inventoryLoading, setInventoryLoading] = useState(false)
+  const [localInventoryValue, setLocalInventoryValue] = useState<string>('')
 
   // Fetch products
   const fetchProducts = async () => {
@@ -466,6 +467,9 @@ export default function ProductMaintenancePage() {
     // Fetch inventory for this product
     await fetchInventory(product.id)
     
+    // Reset local inventory value when editing
+    setLocalInventoryValue('')
+    
     setSelectedImage(null)
     setImagePreview(product.image || null) // Show existing image as preview
     setFormErrors({})
@@ -483,6 +487,7 @@ export default function ProductMaintenancePage() {
     setUploading(false)
     setInventoryData(null)
     setInventoryLoading(false)
+    setLocalInventoryValue('')
   }
 
   // Update inventory for a product (product-level only)
@@ -936,7 +941,7 @@ export default function ProductMaintenancePage() {
 
                       <div className="space-y-4">
                         {variants.map((variant, index) => (
-                          <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div key={variant.variantId || `new-variant-${index}`} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-start justify-between mb-3">
                               <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                 <Package className="w-4 h-4" />
@@ -1052,10 +1057,14 @@ export default function ProductMaintenancePage() {
                               <input
                                 type="number"
                                 min="0"
-                                value={inventoryData?.availableQuantityGrams ?? ''}
+                                value={localInventoryValue !== '' ? localInventoryValue : (inventoryData?.availableQuantityGrams ?? '')}
                                 onChange={(e) => {
+                                  setLocalInventoryValue(e.target.value)
+                                }}
+                                onBlur={(e) => {
                                   const newQuantity = e.target.value ? parseInt(e.target.value) : 0
                                   handleUpdateInventory(editingProduct.id, newQuantity)
+                                  setLocalInventoryValue('') // Reset after update
                                 }}
                                 disabled={inventoryLoading}
                                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent disabled:opacity-50"

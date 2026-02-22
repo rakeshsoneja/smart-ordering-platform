@@ -10,6 +10,7 @@ const webhookRoutes = require('./routes/webhookRoutes');
 const productRoutes = require('./routes/productRoutes');
 const adminProductRoutes = require('./routes/adminProductRoutes');
 const adminOrderRoutes = require('./routes/adminOrderRoutes');
+const adminDeliveryRoutes = require('./routes/adminDeliveryRoutes');
 const variantRoutes = require('./routes/variantRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 // WhatsApp integration commented out - using SMS only
@@ -59,6 +60,7 @@ app.use('/api/webhooks', webhookRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/admin/products', adminProductRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
+app.use('/api/admin/delivery-config', adminDeliveryRoutes);
 app.use('/api/variants', variantRoutes);
 app.use('/api/inventory', inventoryRoutes);
 

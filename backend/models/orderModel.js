@@ -69,6 +69,8 @@ const createOrder = async (orderData) => {
     paymentMode,
     razorpayOrderId,
     status = 'pending',
+    deliveryCharge = null,
+    totalWeightGrams = null,
   } = orderData;
 
   const insertQuery = `
@@ -80,9 +82,11 @@ const createOrder = async (orderData) => {
       amount,
       payment_mode,
       razorpay_order_id,
-      status
+      status,
+      delivery_charge,
+      total_weight_grams
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *
   `;
 
@@ -95,6 +99,8 @@ const createOrder = async (orderData) => {
     paymentMode,
     razorpayOrderId || null,
     status,
+    deliveryCharge,
+    totalWeightGrams,
   ];
 
   const result = await query(insertQuery, values);

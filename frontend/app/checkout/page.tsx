@@ -11,6 +11,8 @@ export default function CheckoutPage() {
   const { cartItems, clearCart, getTotalAmount } = useCart()
   const [loading, setLoading] = useState(false)
   const [paymentMode, setPaymentMode] = useState<'razorpay' | 'cod'>('cod')
+  const [deliveryCharge, setDeliveryCharge] = useState(0)
+  const [deliveryLoading, setDeliveryLoading] = useState(false)
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -22,7 +24,47 @@ export default function CheckoutPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const totalAmount = getTotalAmount()
+  const itemTotal = getTotalAmount()
+
+  // Calculate delivery charge when cart items change
+  useEffect(() => {
+    const calculateDelivery = async () => {
+      if (cartItems.length === 0) {
+        setDeliveryCharge(0)
+        return
+      }
+
+      try {
+        setDeliveryLoading(true)
+        const cartItemsForBackend = cartItems.map(item => ({
+          id: item.id,
+          productId: item.id,
+          variantId: item.variantId || null,
+          variantWeightGrams: item.variantWeightGrams || null,
+          quantity: item.quantity,
+          price: item.price,
+        }))
+
+        const response = await axiosInstance.post('/api/orders/calculate-delivery', {
+          cartItems: cartItemsForBackend,
+        })
+
+        if (response.data.success) {
+          setDeliveryCharge(response.data.deliveryCharge || 0)
+        }
+      } catch (error) {
+        console.error('Error calculating delivery charge:', error)
+        // If calculation fails, set delivery charge to 0
+        setDeliveryCharge(0)
+      } finally {
+        setDeliveryLoading(false)
+      }
+    }
+
+    calculateDelivery()
+  }, [cartItems])
+
+  const orderTotal = itemTotal + deliveryCharge
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -80,9 +122,12 @@ export default function CheckoutPage() {
           return
         }
 
+        // Get final order total from response (includes delivery charge)
+        const finalOrderTotal = orderData.amount || orderTotal
+
         const options = {
           key: razorpayKeyId,
-          amount: orderData.razorpayOrderId ? totalAmount * 100 : 0, // Amount in paise
+          amount: orderData.razorpayOrderId ? finalOrderTotal * 100 : 0, // Amount in paise
           currency: 'INR',
           name: appConfig.shopName,
           description: 'Order Payment',
@@ -101,7 +146,9 @@ export default function CheckoutPage() {
 
               if (verifyResponse.data.success) {
                 clearCart()
-                router.push(`/order-confirmation?orderId=${orderData.orderId}&status=paid`)
+                // Use order ID from verify response (which has the updated order)
+                const orderId = verifyResponse.data.order.id || orderData.id
+                router.push(`/order-confirmation?orderId=${orderId}&status=paid`)
               } else {
                 alert('Payment verification failed. Please contact support.')
               }
@@ -167,13 +214,13 @@ export default function CheckoutPage() {
         totalPrice: item.price * item.quantity,
       }))
 
-      // Create order
+      // Create order (amount should be item total, backend will add delivery charge)
       const response = await axiosInstance.post('/api/orders', {
         customerName: `${formData.firstName} ${formData.lastName}`,
         customerPhone: formData.customerPhone,
         deliveryAddress: formData.deliveryAddress,
         cartItems: cartItemsForBackend,
-        amount: totalAmount,
+        amount: itemTotal, // Item total only, backend calculates delivery charge
         paymentMode: paymentMode,
       })
 
@@ -426,12 +473,30 @@ export default function CheckoutPage() {
                 )
               })}
             </div>
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-lg sm:text-xl font-bold text-gray-800">Total:</span>
-                <span className="text-lg sm:text-xl font-bold text-gray-800">
-                  ₹ {totalAmount.toFixed(2)}
+                <span className="text-base sm:text-lg text-gray-700">Item Total:</span>
+                <span className="text-base sm:text-lg text-gray-800 font-semibold">
+                  ₹ {itemTotal.toFixed(2)}
                 </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-base sm:text-lg text-gray-700">Delivery Charge:</span>
+                <span className="text-base sm:text-lg text-gray-800 font-semibold">
+                  {deliveryLoading ? (
+                    <span className="text-gray-500">Calculating...</span>
+                  ) : (
+                    `₹ ${deliveryCharge.toFixed(2)}`
+                  )}
+                </span>
+              </div>
+              <div className="border-t-2 border-gray-300 pt-2 mt-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg sm:text-xl font-bold text-gray-800">Order Total:</span>
+                  <span className="text-lg sm:text-xl font-bold text-gray-800">
+                    ₹ {orderTotal.toFixed(2)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

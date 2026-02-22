@@ -5,6 +5,7 @@ const { createOrder, getOrderById, getOrderByRazorpayOrderId, updateOrderStatus,
 const { createRazorpayOrder, verifyPaymentSignature } = require('../services/razorpayService');
 const { sendOrderConfirmationSMS, sendPaymentSuccessSMS } = require('../services/smsService');
 const { deductInventoryForOrder } = require('../models/inventoryModel');
+const { calculateDeliveryForCart } = require('../services/deliveryService');
 // WhatsApp integration commented out - using SMS only
 // const { sendOrderConfirmationWhatsApp } = require('../whatsapp/whatsAppServices');
 
@@ -26,9 +27,16 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
       customerPhone,
       deliveryAddress,
       cartItems,
-      amount,
+      amount, // This is the item total from frontend
       paymentMode,
     } = req.body;
+
+    // Calculate delivery charge and total weight
+    const { totalWeightGrams, deliveryCharge } = await calculateDeliveryForCart(cartItems);
+
+    // Calculate final order total: item total + delivery charge
+    const itemTotal = parseFloat(amount) || 0;
+    const finalAmount = itemTotal + deliveryCharge;
 
     let razorpayOrderId = null;
     let orderStatus = 'pending';
@@ -36,7 +44,7 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
     // If payment mode is Razorpay, create Razorpay order first
     if (paymentMode === 'razorpay') {
       try {
-        const razorpayOrder = await createRazorpayOrder(amount, 'INR', {
+        const razorpayOrder = await createRazorpayOrder(finalAmount, 'INR', {
           customer_name: customerName,
           customer_phone: customerPhone,
         });
@@ -75,16 +83,18 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
       }
     }
 
-    // Create order in database
+    // Create order in database with delivery charge and total weight
     const orderData = {
       customerName,
       customerPhone,
       deliveryAddress,
       cartItems,
-      amount,
+      amount: finalAmount, // Store final amount (item total + delivery charge)
       paymentMode,
       razorpayOrderId,
       status: orderStatus,
+      deliveryCharge,
+      totalWeightGrams,
     };
 
     const order = await createOrder(orderData);
@@ -94,7 +104,7 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
       const estimatedDelivery = '30-45 minutes';
       await sendOrderConfirmationSMS(customerPhone, {
         orderId: order.id,
-        amount: amount,
+        amount: finalAmount,
         estimatedDelivery: estimatedDelivery,
       });
 
@@ -113,6 +123,9 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
         customerName: order.customer_name,
         customerPhone: order.customer_phone,
         amount: order.amount,
+        itemTotal: itemTotal,
+        deliveryCharge: deliveryCharge,
+        totalWeightGrams: totalWeightGrams,
         paymentMode: order.payment_mode,
         status: order.status,
         razorpayOrderId: order.razorpay_order_id,
@@ -230,6 +243,46 @@ router.post('/verify-payment', validateRequest(paymentVerificationRules), async 
 });
 
 /**
+ * POST /api/orders/calculate-delivery
+ * Calculate delivery charge for cart items (for order summary display)
+ */
+router.post('/calculate-delivery', async (req, res, next) => {
+  try {
+    const { cartItems } = req.body;
+
+    if (!cartItems || !Array.isArray(cartItems)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cart items are required',
+      });
+    }
+
+    // Calculate delivery charge and total weight
+    const { totalWeightGrams, deliveryCharge } = await calculateDeliveryForCart(cartItems);
+
+    // Calculate item total from cart items
+    const itemTotal = cartItems.reduce((sum, item) => {
+      const price = parseFloat(item.price) || 0;
+      const quantity = parseInt(item.quantity) || 0;
+      return sum + (price * quantity);
+    }, 0);
+
+    // Calculate order total
+    const orderTotal = itemTotal + deliveryCharge;
+
+    res.json({
+      success: true,
+      itemTotal: Math.round(itemTotal * 100) / 100,
+      totalWeightGrams,
+      deliveryCharge,
+      orderTotal: Math.round(orderTotal * 100) / 100,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * GET /api/orders/search
  * Search orders by phone number
  */
@@ -250,6 +303,8 @@ router.get('/search', async (req, res, next) => {
       success: true,
       orders: orders.map(order => {
         const amount = order.amount != null ? parseFloat(order.amount) : 0
+        const deliveryCharge = order.delivery_charge != null ? parseFloat(order.delivery_charge) : 0
+        const itemTotal = amount - deliveryCharge
         return {
           id: order.id,
           customerName: order.customer_name,
@@ -257,6 +312,9 @@ router.get('/search', async (req, res, next) => {
           deliveryAddress: order.delivery_address,
           cartItems: order.cart_items,
           amount: isNaN(amount) ? 0 : amount,
+          itemTotal: isNaN(itemTotal) ? 0 : itemTotal,
+          deliveryCharge: isNaN(deliveryCharge) ? 0 : deliveryCharge,
+          totalWeightGrams: order.total_weight_grams,
           paymentMode: order.payment_mode,
           status: order.status,
           razorpayOrderId: order.razorpay_order_id,
@@ -296,6 +354,8 @@ router.get('/:orderId', async (req, res, next) => {
     }
 
     const amount = order.amount != null ? parseFloat(order.amount) : 0
+    const deliveryCharge = order.delivery_charge != null ? parseFloat(order.delivery_charge) : 0
+    const itemTotal = amount - deliveryCharge
     res.json({
       success: true,
       order: {
@@ -305,6 +365,9 @@ router.get('/:orderId', async (req, res, next) => {
         deliveryAddress: order.delivery_address,
         cartItems: order.cart_items,
         amount: isNaN(amount) ? 0 : amount,
+        itemTotal: isNaN(itemTotal) ? 0 : itemTotal,
+        deliveryCharge: isNaN(deliveryCharge) ? 0 : deliveryCharge,
+        totalWeightGrams: order.total_weight_grams,
         paymentMode: order.payment_mode,
         status: order.status,
         razorpayOrderId: order.razorpay_order_id,

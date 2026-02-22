@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Eye, ChevronDown, X, AlertCircle, CheckCircle2, Clock, XCircle, ShoppingBag } from 'lucide-react'
+import { Eye, ChevronDown, X, AlertCircle, CheckCircle2, Clock, XCircle, ShoppingBag, Printer } from 'lucide-react'
 import axiosInstance from '@/lib/axiosConfig'
+import PrintReceipt from '@/components/printReceipt'
 
 interface OrderItem {
   id: number
@@ -11,6 +12,9 @@ interface OrderItem {
   quantity: number
   unit?: string
   unitValue?: number
+  variantId?: number
+  variantName?: string
+  variantWeightGrams?: number
 }
 
 interface Order {
@@ -20,6 +24,9 @@ interface Order {
   delivery_address: string
   items: OrderItem[]
   total_amount: number
+  itemTotal?: number
+  deliveryCharge?: number
+  totalWeightGrams?: number
   payment_status: string
   order_status: string
   payment_mode: string
@@ -55,6 +62,7 @@ export default function OrderMaintenancePage() {
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [statusUpdateConfirm, setStatusUpdateConfirm] = useState<{ orderId: number; newStatus: string } | null>(null)
   const [tempStatus, setTempStatus] = useState<string>('')
+  const [showPrintReceipt, setShowPrintReceipt] = useState(false)
 
   // Fetch orders
   const fetchOrders = async () => {
@@ -71,6 +79,9 @@ export default function OrderMaintenancePage() {
           delivery_address: order.deliveryAddress || order.delivery_address || '',
           items: Array.isArray(order.cartItems) ? order.cartItems : (Array.isArray(order.items) ? order.items : []),
           total_amount: order.amount != null ? Number(order.amount) : (order.total_amount != null ? Number(order.total_amount) : 0),
+          itemTotal: order.itemTotal != null ? Number(order.itemTotal) : undefined,
+          deliveryCharge: order.deliveryCharge != null ? Number(order.deliveryCharge) : undefined,
+          totalWeightGrams: order.totalWeightGrams,
           payment_status: order.paymentMode || order.payment_mode || '',
           order_status: order.status || order.order_status || 'pending',
           payment_mode: order.paymentMode || order.payment_mode || '',
@@ -215,10 +226,23 @@ export default function OrderMaintenancePage() {
     setSelectedOrder(null)
     setTempStatus('')
     setStatusUpdateConfirm(null)
+    setShowPrintReceipt(false)
+  }
+
+  // Handle print
+  const handlePrint = () => {
+    setShowPrintReceipt(true)
+    // Give React time to render the receipt
+    setTimeout(() => {
+      window.print()
+      // Reset after print dialog closes
+      setTimeout(() => setShowPrintReceipt(false), 500)
+    }, 300)
   }
 
   return (
-    <div className="min-h-screen bg-[#FFF7F3] pt-14 pb-16 lg:pb-0">
+    <>
+      <div className="min-h-screen bg-[#FFF7F3] pt-14 pb-16 lg:pb-0 no-print">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 max-w-7xl">
         {/* Header */}
         <div className="mb-6">
@@ -405,7 +429,16 @@ export default function OrderMaintenancePage() {
               <div className="p-4 sm:p-6 space-y-6">
                 {/* Customer Info */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Customer Information</h3>
+                    <button
+                      onClick={handlePrint}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Print</span>
+                    </button>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Name</p>
@@ -428,25 +461,53 @@ export default function OrderMaintenancePage() {
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <div className="divide-y divide-gray-200">
                       {Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
-                        selectedOrder.items.map((item: OrderItem, index: number) => (
-                          <div key={index} className="p-4 flex justify-between items-center">
-                            <div className="flex-1">
-                              <p className="text-base font-medium text-gray-900">{item.name}</p>
-                              <p className="text-sm text-gray-500">
-                                Quantity: {item.quantity}
-                                {item.unit && ` (${item.unitValue || 1} ${item.unit === 'pc' ? 'piece' : 'g'} per unit)`}
-                              </p>
+                        selectedOrder.items.map((item: OrderItem, index: number) => {
+                          // Only show variant info if variantId exists
+                          const hasVariant = item.variantId !== undefined && item.variantId !== null
+                          // Build item name with variant inline
+                          const itemDisplayName = hasVariant && item.variantName
+                            ? `${item.name} (${item.variantName})`
+                            : item.name
+                          
+                          return (
+                            <div key={index} className="p-4 flex justify-between items-center">
+                              <div className="flex-1">
+                                <p className="text-base font-medium text-gray-900">{itemDisplayName}</p>
+                                {/* Show legacy unit info only if no variant */}
+                                {!hasVariant && item.unit && (
+                                  <p className="text-sm text-gray-500">
+                                    {item.unitValue || 1} {item.unit === 'pc' ? 'piece' : 'g'} per unit
+                                  </p>
+                                )}
+                                <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                              </div>
+                              <p className="text-base font-semibold text-gray-900">₹{((item.price != null ? Number(item.price) : 0) * (item.quantity != null ? Number(item.quantity) : 0)).toFixed(2)}</p>
                             </div>
-                            <p className="text-base font-semibold text-gray-900">₹{((item.price != null ? Number(item.price) : 0) * (item.quantity != null ? Number(item.quantity) : 0)).toFixed(2)}</p>
-                          </div>
-                        ))
+                          )
+                        })
                       ) : (
                         <div className="p-4 text-center text-gray-500">No items found</div>
                       )}
                     </div>
-                    <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                      <span className="text-lg font-semibold text-gray-900">Total</span>
-                      <span className="text-lg font-bold text-gray-900">₹{(selectedOrder.total_amount != null ? Number(selectedOrder.total_amount) : 0).toFixed(2)}</span>
+                    <div className="p-4 bg-gray-50 border-t border-gray-200 space-y-2">
+                      {/* Only show item total if delivery charge exists (to show breakdown) */}
+                      {selectedOrder.deliveryCharge !== undefined && selectedOrder.deliveryCharge > 0 && selectedOrder.itemTotal !== undefined && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-base text-gray-700">Item Total</span>
+                          <span className="text-base font-semibold text-gray-900">₹{selectedOrder.itemTotal.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {/* Only show delivery charge if it exists and > 0 */}
+                      {selectedOrder.deliveryCharge !== undefined && selectedOrder.deliveryCharge > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-base text-gray-700">Delivery Charge</span>
+                          <span className="text-base font-semibold text-gray-900">₹{selectedOrder.deliveryCharge.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-300">
+                        <span className="text-lg font-semibold text-gray-900">Total</span>
+                        <span className="text-lg font-bold text-gray-900">₹{(selectedOrder.total_amount != null ? Number(selectedOrder.total_amount) : 0).toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -517,6 +578,14 @@ export default function OrderMaintenancePage() {
           </div>
         )}
 
+        {/* Print Receipt - Always rendered, hidden on screen, visible when printing */}
+        {selectedOrder && (
+          <PrintReceipt 
+            order={selectedOrder} 
+            className={showPrintReceipt ? 'print-receipt-visible' : ''}
+          />
+        )}
+
         {/* Status Update Confirmation Modal */}
         {statusUpdateConfirm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -567,6 +636,7 @@ export default function OrderMaintenancePage() {
         )}
       </div>
     </div>
+    </>
   )
 }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { X, Package, ShoppingBag } from 'lucide-react'
+import { X, Package, ShoppingBag, Truck } from 'lucide-react'
 
 interface AdminHamburgerMenuProps {
   isOpen: boolean
@@ -20,6 +20,7 @@ export default function AdminHamburgerMenu({ isOpen, onClose }: AdminHamburgerMe
 
   const isProductMaintenance = pathname === '/admin/product-maintenance'
   const isOrderMaintenance = pathname === '/admin/order-maintenance'
+  const isDeliveryConfig = pathname === '/admin/delivery-config'
 
   // Close menu when route changes (only if pathname actually changed)
   useEffect(() => {
@@ -104,6 +105,18 @@ export default function AdminHamburgerMenu({ isOpen, onClose }: AdminHamburgerMe
           >
             <ShoppingBag className="w-5 h-5 flex-shrink-0" />
             <span>Order Maintenance</span>
+          </button>
+
+          <button
+            onClick={() => handleLinkClick('/admin/delivery-config')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors touch-manipulation ${
+              isDeliveryConfig
+                ? 'bg-[#FF6A3D]/10 text-[#FF6A3D] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Truck className="w-5 h-5 flex-shrink-0" />
+            <span>Delivery Config</span>
           </button>
         </nav>
       </div>

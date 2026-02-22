@@ -45,14 +45,23 @@ function OrderConfirmationContent() {
 
   if (!order) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Order Not Found</h1>
-        <button
-          onClick={() => router.push('/')}
-          className="bg-gradient-to-r from-[#FF6A3D] to-[#FF3D68] text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-[#FF6A3D]/30 transition-all"
-        >
-          Back to Home
-        </button>
+      <div className="min-h-screen bg-[#FFF7F3] flex items-center justify-center pt-14 pb-16 lg:pb-0">
+        <div className="container mx-auto px-4 py-8 text-center max-w-md">
+          <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Order Not Found</h1>
+            <p className="text-gray-600 mb-6">
+              {orderId 
+                ? `Unable to load order #${orderId}. Please try again or contact support.`
+                : 'No order ID provided. Please check your order confirmation link.'}
+            </p>
+            <button
+              onClick={() => router.push('/')}
+              className="bg-gradient-to-r from-[#FF6A3D] to-[#FF3D68] text-white px-6 py-3 rounded-full hover:shadow-lg hover:shadow-[#FF6A3D]/30 transition-all font-semibold"
+            >
+              Continue Shopping
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -62,11 +71,16 @@ function OrderConfirmationContent() {
     : order.cartItems
 
   const isPaid = order.status === 'paid' || order.status === 'confirmed' || status === 'paid' || status === 'cod'
-  const totalAmount = cartItems.reduce((sum: number, item: any) => {
+  
+  // Get amounts from order (includes delivery charge if available)
+  const itemTotal = order.itemTotal != null ? parseFloat(order.itemTotal) : cartItems.reduce((sum: number, item: any) => {
     const price = Number(item?.price) || 0
     const quantity = Number(item?.quantity) || 0
     return sum + (price * quantity)
   }, 0)
+  const deliveryCharge = order.deliveryCharge != null ? parseFloat(order.deliveryCharge) : 0
+  const totalAmount = order.amount != null ? parseFloat(order.amount) : (itemTotal + deliveryCharge)
+  
   const paymentModeText = order.paymentMode === 'razorpay' ? 'UPI / Card' : 'Cash on Delivery'
   const statusText = order.status === 'paid' ? 'Confirmed' : 
                      order.status === 'confirmed' ? 'Confirmed' :
@@ -95,11 +109,25 @@ function OrderConfirmationContent() {
             </p>
           </div>
 
-          {/* Line 3: Total */}
+          {/* Order Summary */}
           <div className="mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-gray-300">
-            <p className="text-lg sm:text-xl text-gray-800">
-              <span className="font-semibold">Total:</span> <span className="font-bold text-[#FF6A3D]">₹{totalAmount.toFixed(2)}</span>
-            </p>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Order Summary</h2>
+            <div className="space-y-2 text-sm sm:text-base">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Item Total:</span>
+                <span className="font-semibold text-gray-800">₹{itemTotal.toFixed(2)}</span>
+              </div>
+              {deliveryCharge > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">Delivery Charge:</span>
+                  <span className="font-semibold text-gray-800">₹{deliveryCharge.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                <span className="text-lg sm:text-xl font-bold text-gray-800">Total:</span>
+                <span className="text-lg sm:text-xl font-bold text-[#FF6A3D]">₹{totalAmount.toFixed(2)}</span>
+              </div>
+            </div>
           </div>
 
           {/* Delivery Details */}

@@ -110,6 +110,31 @@ DROP TRIGGER IF EXISTS update_product_inventory_updated_at ON product_inventory;
 CREATE TRIGGER update_product_inventory_updated_at BEFORE UPDATE ON product_inventory
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Delivery Configuration table (ADDITIVE - does not modify existing tables)
+-- Stores weight-based delivery charge configuration
+CREATE TABLE IF NOT EXISTS delivery_config (
+    config_id SERIAL PRIMARY KEY,
+    weight_unit_grams INTEGER NOT NULL CHECK (weight_unit_grams > 0),
+    charge_amount DECIMAL(10, 2) NOT NULL CHECK (charge_amount >= 0),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create index for active delivery config lookups
+CREATE INDEX IF NOT EXISTS idx_delivery_config_is_active ON delivery_config(is_active);
+
+-- Trigger to automatically update updated_at for delivery_config
+DROP TRIGGER IF EXISTS update_delivery_config_updated_at ON delivery_config;
+CREATE TRIGGER update_delivery_config_updated_at BEFORE UPDATE ON delivery_config
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Add nullable delivery charge and total weight columns to orders table (ADDITIVE)
+-- These columns are nullable to maintain backward compatibility with existing orders
+ALTER TABLE orders 
+ADD COLUMN IF NOT EXISTS delivery_charge DECIMAL(10, 2),
+ADD COLUMN IF NOT EXISTS total_weight_grams INTEGER;
+
 
 
 
