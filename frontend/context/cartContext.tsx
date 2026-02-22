@@ -7,6 +7,7 @@ interface CartItem {
   id: number // product_id (for backward compatibility)
   variantId?: number // NEW: variant ID if using variants
   variantName?: string // NEW: variant name (e.g., "250g", "500g")
+  variantWeightGrams?: number // NEW: variant weight in grams for delivery calculation
   name: string
   description?: string
   price: number // Price for selected variant or legacy price
