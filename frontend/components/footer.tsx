@@ -26,7 +26,7 @@ export default function Footer({ className = '' }: FooterProps) {
             <h3 className="text-sm sm:text-base font-semibold mb-2 sm:mb-3">Contact</h3>
             <div className="text-xs sm:text-sm lg:text-base text-gray-400 space-y-1">
               <p>
-                Phone: <a href="tel:+918667377257" className="hover:text-white transition-colors">+91 8667377257</a>
+                Phone: <a href={`tel:${appConfig.shopPhoneNumber.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{appConfig.shopPhoneNumber}</a>
               </p>
               <p>
                 Email: <a href="mailto:info@sweetshop.com" className="hover:text-white transition-colors">info@sweetshop.com</a>

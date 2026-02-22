@@ -57,7 +57,7 @@ export default function PrintReceipt({ order, className = '' }: PrintReceiptProp
         {/* 1. Store Header - Top Center */}
         <div className="text-center mb-6 border-b-2 border-gray-900 pb-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{appConfig.shopName}</h1>
-          <p className="text-base text-gray-900">Phone: +91 8667377257</p>
+          <p className="text-base text-gray-900">Phone: {appConfig.shopPhoneNumber}</p>
         </div>
 
         {/* 2. Customer Delivery Address Section */}
