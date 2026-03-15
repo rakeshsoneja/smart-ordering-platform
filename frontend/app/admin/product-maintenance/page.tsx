@@ -528,11 +528,11 @@ export default function ProductMaintenancePage() {
     }
   }
 
-  // Handle delete
+  // Handle delete (permanent; remove from UI immediately)
   const handleDelete = async (productId: number) => {
     try {
       await axiosInstance.delete(`/api/products/${productId}`)
-      await fetchProducts()
+      setProducts(prev => prev.filter(p => p.id !== productId))
       setDeleteConfirm(null)
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete product')
@@ -757,7 +757,7 @@ export default function ProductMaintenancePage() {
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Product</h3>
               <p className="text-sm text-gray-600 mb-6">
-                Are you sure you want to disable this product? This action can be undone by editing the product.
+                Are you sure you want to delete this product? This action cannot be undone.
               </p>
               <div className="flex gap-3">
                 <button

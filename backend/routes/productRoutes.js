@@ -5,13 +5,14 @@ const {
   getProductById,
   createProduct,
   updateProduct,
-  deleteProduct,
+  hardDeleteProduct,
 } = require('../models/productModel');
 const {
   getVariantsByProductId,
   getDefaultVariantByProductId,
 } = require('../models/variantModel');
 const { getInventoryStatus } = require('../models/inventoryModel');
+const { deleteImage, extractPublicId } = require('../services/cloudinaryService');
 
 /**
  * Product Routes
@@ -343,7 +344,7 @@ router.put('/:productId', async (req, res, next) => {
 
 /**
  * DELETE /api/products/:productId
- * Delete/disable a product
+ * Permanently delete a product and its Cloudinary image if present.
  */
 router.delete('/:productId', async (req, res, next) => {
   try {
@@ -356,8 +357,7 @@ router.delete('/:productId', async (req, res, next) => {
       });
     }
 
-    const product = await deleteProduct(productId);
-
+    const product = await getProductById(productId);
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -365,13 +365,26 @@ router.delete('/:productId', async (req, res, next) => {
       });
     }
 
+    // Delete image from Cloudinary if product has a Cloudinary URL
+    if (product.image && typeof product.image === 'string' && product.image.includes('cloudinary.com')) {
+      const publicId = extractPublicId(product.image);
+      if (publicId) {
+        try {
+          await deleteImage(publicId);
+        } catch (deleteErr) {
+          console.warn('Failed to delete product image from Cloudinary:', deleteErr.message);
+        }
+      }
+    }
+
+    await hardDeleteProduct(productId);
+
     res.json({
       success: true,
-      message: 'Product disabled successfully',
+      message: 'Product deleted successfully',
       product: {
         id: product.id,
         name: product.name,
-        status: product.status,
       },
     });
   } catch (error) {
