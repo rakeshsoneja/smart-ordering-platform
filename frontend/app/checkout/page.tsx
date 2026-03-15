@@ -360,7 +360,7 @@ export default function CheckoutPage() {
                     className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       errors.customerPhone ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="+91XXXXXXXXXX"
+                    placeholder="Phone number"
                   />
                   {errors.customerPhone && (
                     <p className="text-red-500 text-xs mt-0.5">{errors.customerPhone}</p>

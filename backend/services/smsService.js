@@ -45,8 +45,8 @@ const sendOrderConfirmationSMS = async (phoneNumber, orderDetails) => {
   }
 
   try {
-    // Format phone number (ensure it starts with +)
-    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+    // Use as-is if already E.164 (+...); otherwise prepend + (normalized value is E.164 from order creation)
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
 
     // Create SMS message
     const message = `🎉 Order Confirmed!\n\nOrder ID: ${orderDetails.orderId}\nAmount: ₹${orderDetails.amount}\n\nThank you for your order!`;
@@ -87,7 +87,7 @@ const sendPaymentSuccessSMS = async (phoneNumber, paymentDetails) => {
   }
 
   try {
-    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
 
     const message = `✅ Payment Successful!\n\nOrder ID: ${paymentDetails.orderId}\nPayment ID: ${paymentDetails.paymentId}\nAmount: ₹${paymentDetails.amount}\n\nYour order is being processed.`;
 

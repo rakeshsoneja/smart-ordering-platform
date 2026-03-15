@@ -1,4 +1,5 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { validateRequest, orderValidationRules, paymentVerificationRules } = require('../middleware/validateRequest');
 const { createOrder, getOrderById, getOrderByRazorpayOrderId, updateOrderStatus, getOrdersByCustomerPhone } = require('../models/orderModel');
@@ -6,8 +7,9 @@ const { createRazorpayOrder, verifyPaymentSignature } = require('../services/raz
 const { sendOrderConfirmationSMS, sendPaymentSuccessSMS } = require('../services/smsService');
 const { deductInventoryForOrder } = require('../models/inventoryModel');
 const { calculateDeliveryForCart } = require('../services/deliveryService');
-// WhatsApp integration commented out - using SMS only
-// const { sendOrderConfirmationWhatsApp } = require('../whatsapp/whatsAppServices');
+const { sendOrderConfirmationWhatsApp } = require('../whatsapp/whatsAppServices');
+const whatsAppConfig = require('../whatsapp/whatsAppConfig');
+const { normalizePhone } = require('../utils/phoneUtils');
 
 /**
  * Order Routes
@@ -22,7 +24,7 @@ const { calculateDeliveryForCart } = require('../services/deliveryService');
  */
 router.post('/', validateRequest(orderValidationRules), async (req, res, next) => {
   try {
-    const {
+    let {
       customerName,
       customerPhone,
       deliveryAddress,
@@ -30,6 +32,10 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
       amount, // This is the item total from frontend
       paymentMode,
     } = req.body;
+
+    // Normalize phone to E.164 (+countryCode+digits) for SMS and WhatsApp; same value works for both
+    const normalizedPhone = normalizePhone(customerPhone);
+    if (normalizedPhone) customerPhone = normalizedPhone;
 
     // Calculate delivery charge and total weight
     const { totalWeightGrams, deliveryCharge } = await calculateDeliveryForCart(cartItems);
@@ -99,6 +105,12 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
 
     const order = await createOrder(orderData);
 
+    // Generate secure JWT for WhatsApp "Order Details" button (7-day expiry, not exposed in URL as order_id)
+    const orderLinkSecret = process.env.ORDER_LINK_SECRET;
+    const secureToken = orderLinkSecret
+      ? jwt.sign({ orderId: order.id }, orderLinkSecret, { expiresIn: '7d' })
+      : null;
+
     // Send SMS for COD orders immediately
     if (paymentMode === 'cod') {
       const estimatedDelivery = '30-45 minutes';
@@ -108,9 +120,11 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
         estimatedDelivery: estimatedDelivery,
       });
 
-      // WhatsApp notification commented out - using SMS only
-      // sendOrderConfirmationWhatsApp(customerPhone, customerName, order.id)
-      //   .catch(console.error);
+      if (whatsAppConfig.enabled) {
+        const qrImageUrl = process.env.UPI_QR_IMAGE_URL || null;
+        sendOrderConfirmationWhatsApp(customerPhone, customerName, order.id, secureToken, qrImageUrl)
+          .catch(console.error);
+      }
     }
 
     res.status(201).json({
@@ -224,9 +238,15 @@ router.post('/verify-payment', validateRequest(paymentVerificationRules), async 
       estimatedDelivery: estimatedDelivery,
     });
 
-    // WhatsApp notification commented out - using SMS only
-    // sendOrderConfirmationWhatsApp(order.customer_phone, order.customer_name, order.id)
-    //   .catch(console.error);
+    if (whatsAppConfig.enabled) {
+      const orderLinkSecret = process.env.ORDER_LINK_SECRET;
+      const secureToken = orderLinkSecret
+        ? jwt.sign({ orderId: order.id }, orderLinkSecret, { expiresIn: '7d' })
+        : null;
+      const qrImageUrl = process.env.UPI_QR_IMAGE_URL || null;
+      sendOrderConfirmationWhatsApp(order.customer_phone, order.customer_name, order.id, secureToken, qrImageUrl)
+        .catch(console.error);
+    }
 
     res.json({
       success: true,

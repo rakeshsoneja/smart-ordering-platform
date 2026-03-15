@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
-import Header from '@/components/header'
-import Footer from '@/components/footer'
-import BottomNavWrapper from '@/components/bottomNavWrapper'
+import AppShell from '@/components/AppShell'
 import { Providers } from './providers'
 import { appConfig } from '@/lib/config'
 
@@ -43,14 +41,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${poppins.variable} font-poppins`}>
         <Providers>
-          <div className="min-h-screen flex flex-col h-full">
-            <Header />
-            <main className="flex-grow pt-14 pb-16 lg:pb-0 overflow-y-auto">
-              {children}
-              <Footer />
-            </main>
-            <BottomNavWrapper />
-          </div>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

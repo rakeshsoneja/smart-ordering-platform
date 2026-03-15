@@ -173,6 +173,19 @@ html {
   visibility: hidden;
 }
 
+/* Receipt visible on screen (e.g. WhatsApp order-details page) - screen only so admin print works */
+@media screen {
+  .print-receipt-container.print-receipt-visible {
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    visibility: visible !important;
+  }
+}
+
 @media print {
   /* Step 1: Hide everything by default using visibility */
   body * {

@@ -55,12 +55,22 @@ Backend API for the sweet shop ordering system built with Node.js, Express.js, a
 - `POST /api/orders/verify-payment` - Verify Razorpay payment
 - `GET /api/orders/:orderId` - Get order details
 
+### Public (no auth)
+- `GET /api/public/order/:token` - Get order details by JWT token (e.g. from WhatsApp Order Details button). Returns 401 if token invalid/expired, 404 if order not found.
+
 ### Webhooks
 - `POST /api/webhooks/razorpay` - Razorpay webhook endpoint
 
 ## Environment Variables
 
 See `.env.example` for all required environment variables.
+
+- **ORDER_LINK_SECRET** – Secret used to sign JWT for the WhatsApp "Order Details" link. Generate a secure random string (e.g. `openssl rand -base64 32`). Do not expose to the frontend. Required for secure order-details links.
+
+### UPI Payment QR (WhatsApp order confirmation)
+- **SHOP_UPI_ID** – Your UPI ID for receiving payments (e.g. `shopname@okaxis`, `store@paytm`).
+- **SHOP_NAME** – Display name shown in UPI apps (e.g. `Ram Grocery Store`).
+- **UPI_QR_IMAGE_URL** – Public URL of the UPI QR image (Cloudinary). Generate once via `npm run generate:upi-qr` and add the printed URL to `.env`.
 
 ## Security Notes
 

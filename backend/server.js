@@ -13,8 +13,8 @@ const adminOrderRoutes = require('./routes/adminOrderRoutes');
 const adminDeliveryRoutes = require('./routes/adminDeliveryRoutes');
 const variantRoutes = require('./routes/variantRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
-// WhatsApp integration commented out - using SMS only
-// const whatsAppWebhook = require('./whatsapp/whatsAppWebhook');
+const whatsAppWebhook = require('./whatsapp/whatsAppWebhook');
+const publicOrderRoutes = require('./routes/publicOrderRoutes');
 const initSchema = require('./database/initSchema');
 const seedProducts = require('./database/seedProducts');
 
@@ -54,6 +54,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/public', publicOrderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/webhooks', webhookRoutes);
@@ -64,8 +65,8 @@ app.use('/api/admin/delivery-config', adminDeliveryRoutes);
 app.use('/api/variants', variantRoutes);
 app.use('/api/inventory', inventoryRoutes);
 
-// WhatsApp Webhook Routes - COMMENTED OUT (using SMS only)
-// app.use('/', whatsAppWebhook);
+// WhatsApp Webhook Routes (Cloud API verification + incoming messages)
+app.use('/', whatsAppWebhook);
 
 // 404 handler
 app.use((req, res) => {
