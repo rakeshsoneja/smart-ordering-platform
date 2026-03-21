@@ -27,30 +27,66 @@ interface Product {
   variants?: Variant[] // ADD THIS - variants array
 }
 
+const PRODUCT_FETCH_ATTEMPTS = 3
+const RETRY_DELAY_MS = 600
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'sweet' | 'savory' | 'gift'>('all')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [fetchKey, setFetchKey] = useState(0)
 
-  // Fetch products from API
+  // Fetch products with retries (helps flaky mobile / cold API on first paint)
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axiosInstance.get('/api/products?status=active')
-        if (response.data.success) {
-          setProducts(response.data.products)
+    let cancelled = false
+
+    const load = async () => {
+      setLoading(true)
+      setLoadError(null)
+
+      for (let attempt = 1; attempt <= PRODUCT_FETCH_ATTEMPTS; attempt++) {
+        try {
+          const response = await axiosInstance.get('/api/products?status=active')
+          if (cancelled) return
+
+          const list = response.data?.products
+          if (response.data?.success && Array.isArray(list)) {
+            setProducts(list)
+            setLoading(false)
+            return
+          }
+          if (Array.isArray(list)) {
+            setProducts(list)
+            setLoading(false)
+            return
+          }
+        } catch (error) {
+          console.error('Failed to fetch products:', error)
         }
-      } catch (error) {
-        console.error('Failed to fetch products:', error)
-        // Fallback to empty array on error
+
+        if (cancelled) return
+        if (attempt < PRODUCT_FETCH_ATTEMPTS) {
+          await sleep(RETRY_DELAY_MS)
+        }
+      }
+
+      if (!cancelled) {
         setProducts([])
-      } finally {
+        setLoadError('Could not load products. Check your connection and try again.')
         setLoading(false)
       }
     }
 
-    fetchProducts()
-  }, [])
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [fetchKey])
 
   const filteredProducts = selectedCategory === 'all' 
     ? products 
@@ -124,6 +160,17 @@ export default function Home() {
             {[...Array(4)].map((_, i) => (
               <div key={i} className="bg-gray-100 rounded-lg h-64 animate-pulse"></div>
             ))}
+          </section>
+        ) : loadError ? (
+          <section className="text-center py-12 px-4">
+            <p className="text-gray-700 mb-4">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => setFetchKey((k) => k + 1)}
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors"
+            >
+              Retry
+            </button>
           </section>
         ) : filteredProducts.length === 0 ? (
           <section className="text-center py-12">

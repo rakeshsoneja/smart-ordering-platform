@@ -25,7 +25,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col h-full">
       <Header />
-      <main className="flex-grow pt-14 pb-16 lg:pb-0 overflow-y-auto">
+      <main className="flex-grow min-h-0 pt-14 pb-16 lg:pb-0 overflow-y-auto overscroll-behavior-y-contain">
         {children}
         <Footer />
       </main>

@@ -96,24 +96,8 @@ html {
   }
 }
 
-/* Prevent address bar from moving on mobile */
-@media (max-width: 768px) {
-  html {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
-  
-  body {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-}
+/* Note: Avoid position:fixed on html/body for mobile — it breaks Android Chrome touch/focus
+   on inputs and can hide or clip scrollable content on first paint. Use normal document scroll. */
 
 /* Line clamp utility */
 .line-clamp-2 {
