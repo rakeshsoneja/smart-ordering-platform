@@ -6,11 +6,24 @@ import axiosInstance from '@/lib/axiosConfig'
 
 interface Variant {
   variantId?: number
+  /** Stable key for new rows (before save) so draft state survives re-render. */
+  _clientKey?: string
   variantName: string
   variantWeightGrams?: number
   variantPrice: number
   isDefaultVariant: boolean
   isActive: boolean
+}
+
+const newVariantClientKey = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `v-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+
+const getVariantRowKey = (variant: Variant, index: number) => {
+  if (variant.variantId != null) return `id-${variant.variantId}`
+  if (variant._clientKey) return `c-${variant._clientKey}`
+  return `i-${index}`
 }
 
 interface Product {
@@ -55,6 +68,8 @@ export default function ProductMaintenancePage() {
   /** `null` = show server value; string = user draft (may be "" for empty). */
   const [localInventoryValue, setLocalInventoryValue] = useState<string | null>(null)
   const [inventoryQtyFocused, setInventoryQtyFocused] = useState(false)
+  /** Variant name/weight/price drafts: key `${rowKey}:name|weight|price`, undefined = show variant value */
+  const [variantFieldDrafts, setVariantFieldDrafts] = useState<Record<string, string>>({})
 
   // Fetch products
   const fetchProducts = async () => {
@@ -128,6 +143,7 @@ export default function ProductMaintenancePage() {
   // Variant management functions
   const handleAddVariant = () => {
     setVariants(prev => [...prev, {
+      _clientKey: newVariantClientKey(),
       variantName: '',
       variantWeightGrams: undefined,
       variantPrice: 0,
@@ -136,7 +152,19 @@ export default function ProductMaintenancePage() {
     }])
   }
 
+  const clearVariantDraftsForRowKey = (rowKey: string) => {
+    setVariantFieldDrafts(prev => {
+      const next = { ...prev }
+      delete next[`${rowKey}:name`]
+      delete next[`${rowKey}:weight`]
+      delete next[`${rowKey}:price`]
+      return next
+    })
+  }
+
   const handleRemoveVariant = (index: number) => {
+    const rowKey = getVariantRowKey(variants[index], index)
+    clearVariantDraftsForRowKey(rowKey)
     setVariants(prev => {
       const updated = prev.filter((_, i) => i !== index)
       // If we removed the default variant, make the first one default
@@ -277,15 +305,18 @@ export default function ProductMaintenancePage() {
             const existingVariants = existingVariantsResponse.data.success 
               ? existingVariantsResponse.data.variants 
               : []
-            
-            // Get IDs of variants that still exist in the form
-            const currentVariantIds = variants
-              .filter(v => v.variantId)
-              .map(v => v.variantId)
-            
+
+            // IDs still on the form (coerce to number — string IDs break .includes vs API numbers)
+            const currentVariantIdSet = new Set(
+              variants
+                .filter((v) => v.variantId != null)
+                .map((v) => Number(v.variantId))
+                .filter((id) => !Number.isNaN(id))
+            )
+
             // Delete variants that were removed from the form
             for (const existingVariant of existingVariants) {
-              if (!currentVariantIds.includes(existingVariant.variantId)) {
+              if (!currentVariantIdSet.has(Number(existingVariant.variantId))) {
                 try {
                   await axiosInstance.delete(`/api/variants/${existingVariant.variantId}`)
                 } catch (err) {
@@ -293,6 +324,12 @@ export default function ProductMaintenancePage() {
                 }
               }
             }
+
+            // DB truth after deletes — used to reconcile rows that lost variantId in UI but still exist in DB
+            const refreshedResponse = await axiosInstance.get(`/api/variants/product/${productId}`)
+            const existingAfterDeletes = refreshedResponse.data.success
+              ? refreshedResponse.data.variants
+              : []
             
             // Update or create variants
             for (const variant of variants) {
@@ -316,28 +353,52 @@ export default function ProductMaintenancePage() {
                   throw err
                 }
               } else {
-                // Create new variant
+                // Create new variant, or update if DB already has this name (form row lost variantId)
                 try {
-                  const createResponse = await axiosInstance.post('/api/variants', {
-                    productId,
-                    variantName: variant.variantName.trim(),
-                    variantWeightGrams: variant.variantWeightGrams || null,
-                    variantPrice: variant.variantPrice,
-                    isDefaultVariant: variant.isDefaultVariant,
-                    isActive: variant.isActive,
-                  })
-                  console.log(`✅ Created variant:`, createResponse.data)
-                } catch (err: any) {
-                  // If variant name already exists, it might be a race condition
-                  if (err.response?.data?.error?.includes('already exists')) {
-                    console.warn(`⚠️ Variant ${variant.variantName} already exists, skipping creation`)
+                  const nameTrim = variant.variantName.trim()
+                  const matchByName = existingAfterDeletes.find(
+                    (ev: { variantName: string }) => ev.variantName.trim() === nameTrim
+                  )
+                  if (matchByName) {
+                    const updateResponse = await axiosInstance.put(`/api/variants/${matchByName.variantId}`, {
+                      variantName: nameTrim,
+                      variantWeightGrams: variant.variantWeightGrams || null,
+                      variantPrice: variant.variantPrice,
+                      isDefaultVariant: variant.isDefaultVariant,
+                      isActive: variant.isActive,
+                    })
+                    console.log(`✅ Updated variant (reconciled by name) ${matchByName.variantId}:`, updateResponse.data)
                   } else {
-                    console.error(`❌ Error creating variant:`, err)
-                    if (err.response) {
-                      console.error('Error response:', err.response.data)
+                    const createResponse = await axiosInstance.post('/api/variants', {
+                      productId,
+                      variantName: nameTrim,
+                      variantWeightGrams: variant.variantWeightGrams || null,
+                      variantPrice: variant.variantPrice,
+                      isDefaultVariant: variant.isDefaultVariant,
+                      isActive: variant.isActive,
+                    })
+                    console.log(`✅ Created variant:`, createResponse.data)
+                    const created = createResponse.data?.variant
+                    const resolvedId = created?.variantId
+                    const resolvedName = created?.variantName ?? nameTrim
+                    if (resolvedId) {
+                      const exists = existingAfterDeletes.some(
+                        (e: { variantId: number }) => e.variantId === resolvedId
+                      )
+                      if (!exists) {
+                        existingAfterDeletes.push({
+                          variantId: resolvedId,
+                          variantName: resolvedName,
+                        })
+                      }
                     }
-                    throw err
                   }
+                } catch (err: any) {
+                  console.error(`❌ Error saving variant (create/reconcile):`, err)
+                  if (err.response) {
+                    console.error('Error response:', err.response.data)
+                  }
+                  throw err
                 }
               }
             }
@@ -410,6 +471,7 @@ export default function ProductMaintenancePage() {
       status: 'active',
     })
     setVariants([])
+    setVariantFieldDrafts({})
     setSelectedImage(null)
     setImagePreview(null)
     setFormErrors({})
@@ -480,6 +542,7 @@ export default function ProductMaintenancePage() {
     // Reset local inventory draft when editing (show server value until user types)
     setLocalInventoryValue(null)
     setInventoryQtyFocused(false)
+    setVariantFieldDrafts({})
     
     setSelectedImage(null)
     setImagePreview(product.image || null) // Show existing image as preview
@@ -500,6 +563,7 @@ export default function ProductMaintenancePage() {
     setInventoryLoading(false)
     setLocalInventoryValue(null)
     setInventoryQtyFocused(false)
+    setVariantFieldDrafts({})
   }
 
   const parseInventoryGramsForSave = (): number => {
@@ -967,8 +1031,69 @@ export default function ProductMaintenancePage() {
                       )}
 
                       <div className="space-y-4">
-                        {variants.map((variant, index) => (
-                          <div key={variant.variantId || `new-variant-${index}`} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        {variants.map((variant, index) => {
+                          const rowKey = getVariantRowKey(variant, index)
+                          const nameDraft = variantFieldDrafts[`${rowKey}:name`]
+                          const weightDraft = variantFieldDrafts[`${rowKey}:weight`]
+                          const priceDraft = variantFieldDrafts[`${rowKey}:price`]
+                          const nameValue =
+                            nameDraft !== undefined ? nameDraft : variant.variantName
+                          const weightValue =
+                            weightDraft !== undefined
+                              ? weightDraft
+                              : variant.variantWeightGrams != null
+                                ? String(variant.variantWeightGrams)
+                                : ''
+                          const priceValue =
+                            priceDraft !== undefined
+                              ? priceDraft
+                              : String(variant.variantPrice)
+
+                          const commitVariantNameBlur = (raw: string) => {
+                            handleVariantChange(index, 'variantName', raw)
+                            setVariantFieldDrafts(prev => {
+                              const next = { ...prev }
+                              delete next[`${rowKey}:name`]
+                              return next
+                            })
+                          }
+                          const commitVariantWeightBlur = (raw: string) => {
+                            const t = raw.replace(/\D/g, '').trim()
+                            handleVariantChange(
+                              index,
+                              'variantWeightGrams',
+                              t === '' ? null : parseInt(t, 10) || null
+                            )
+                            setVariantFieldDrafts(prev => {
+                              const next = { ...prev }
+                              delete next[`${rowKey}:weight`]
+                              return next
+                            })
+                          }
+                          const commitVariantPriceBlur = (raw: string) => {
+                            const t = raw.trim()
+                            const n = parseFloat(t)
+                            handleVariantChange(
+                              index,
+                              'variantPrice',
+                              Number.isFinite(n) ? n : 0
+                            )
+                            setVariantFieldDrafts(prev => {
+                              const next = { ...prev }
+                              delete next[`${rowKey}:price`]
+                              return next
+                            })
+                          }
+
+                          const sanitizePriceDraft = (s: string) => {
+                            const cleaned = s.replace(/[^\d.]/g, '')
+                            const parts = cleaned.split('.')
+                            if (parts.length <= 1) return cleaned
+                            return parts[0] + '.' + parts.slice(1).join('').replace(/\./g, '')
+                          }
+
+                          return (
+                          <div key={variant.variantId || variant._clientKey || `new-variant-${index}`} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-start justify-between mb-3">
                               <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                 <Package className="w-4 h-4" />
@@ -991,15 +1116,27 @@ export default function ProductMaintenancePage() {
                                 <label className="block text-xs font-medium text-gray-700 mb-1">
                                   Variant Name (e.g., 250g, 500g) *
                                 </label>
+                                <div className="relative min-w-0">
                                 <input
                                   type="text"
-                                  value={variant.variantName}
-                                  onChange={(e) => handleVariantChange(index, 'variantName', e.target.value)}
-                                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                                  autoComplete="off"
+                                  value={nameValue}
+                                  onChange={(e) =>
+                                    setVariantFieldDrafts(prev => ({
+                                      ...prev,
+                                      [`${rowKey}:name`]: e.target.value,
+                                    }))
+                                  }
+                                  onFocus={(e) => {
+                                    requestAnimationFrame(() => e.target.select())
+                                  }}
+                                  onBlur={(e) => commitVariantNameBlur(e.target.value)}
+                                  className={`w-full min-w-0 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
                                     formErrors[`variant_name_${index}`] ? 'border-red-500' : 'border-gray-300'
                                   }`}
                                   placeholder="250g"
                                 />
+                                </div>
                                 {formErrors[`variant_name_${index}`] && (
                                   <p className="mt-1 text-xs text-red-600">{formErrors[`variant_name_${index}`]}</p>
                                 )}
@@ -1009,31 +1146,56 @@ export default function ProductMaintenancePage() {
                                 <label className="block text-xs font-medium text-gray-700 mb-1">
                                   Weight (grams) <span className="text-gray-400">(Optional)</span>
                                 </label>
+                                <div className="relative min-w-0">
                                 <input
-                                  type="number"
-                                  min="0"
-                                  value={variant.variantWeightGrams || ''}
-                                  onChange={(e) => handleVariantChange(index, 'variantWeightGrams', e.target.value ? parseInt(e.target.value) : null)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
+                                  type="text"
+                                  inputMode="numeric"
+                                  autoComplete="off"
+                                  value={weightValue}
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(/\D/g, '')
+                                    setVariantFieldDrafts(prev => ({
+                                      ...prev,
+                                      [`${rowKey}:weight`]: v,
+                                    }))
+                                  }}
+                                  onFocus={(e) => {
+                                    requestAnimationFrame(() => e.target.select())
+                                  }}
+                                  onBlur={(e) => commitVariantWeightBlur(e.target.value)}
+                                  className="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
                                   placeholder="250"
                                 />
+                                </div>
                               </div>
 
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">
                                   Price (₹) *
                                 </label>
+                                <div className="relative min-w-0">
                                 <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={variant.variantPrice}
-                                  onChange={(e) => handleVariantChange(index, 'variantPrice', parseFloat(e.target.value) || 0)}
-                                  className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                                  type="text"
+                                  inputMode="decimal"
+                                  autoComplete="off"
+                                  value={priceValue}
+                                  onChange={(e) => {
+                                    const v = sanitizePriceDraft(e.target.value)
+                                    setVariantFieldDrafts(prev => ({
+                                      ...prev,
+                                      [`${rowKey}:price`]: v,
+                                    }))
+                                  }}
+                                  onFocus={(e) => {
+                                    requestAnimationFrame(() => e.target.select())
+                                  }}
+                                  onBlur={(e) => commitVariantPriceBlur(e.target.value)}
+                                  className={`w-full min-w-0 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
                                     formErrors[`variant_price_${index}`] ? 'border-red-500' : 'border-gray-300'
                                   }`}
                                   placeholder="250.00"
                                 />
+                                </div>
                                 {formErrors[`variant_price_${index}`] && (
                                   <p className="mt-1 text-xs text-red-600">{formErrors[`variant_price_${index}`]}</p>
                                 )}
@@ -1062,7 +1224,8 @@ export default function ProductMaintenancePage() {
                             </div>
 
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 

@@ -45,6 +45,8 @@ export default function CheckoutPage() {
           productId: item.id,
           variantId: item.variantId || null,
           variantWeightGrams: item.variantWeightGrams || null,
+          unit: item.unit ?? null,
+          unitValue: item.unitValue ?? null,
           quantity: item.quantity,
           price: item.price,
         }))
@@ -249,6 +251,7 @@ export default function CheckoutPage() {
         unitValue: item.unitValue || null, // Legacy field
         variantId: item.variantId || null, // NEW: variant ID if using variants
         variantName: item.variantName || null, // NEW: variant name
+        variantWeightGrams: item.variantWeightGrams ?? null, // must match calculate-delivery payload for weight
         price: item.price,
         totalPrice: item.price * item.quantity,
       }))

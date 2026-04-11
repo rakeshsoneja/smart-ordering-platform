@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getVariantsByProductId,
   getVariantById,
+  getVariantByProductIdAndExactName,
   createVariant,
   updateVariant,
   deleteVariant,
@@ -107,6 +108,8 @@ router.get('/:variantId', async (req, res, next) => {
  * Create a new variant
  */
 router.post('/', async (req, res, next) => {
+  /** Set before createVariant so catch (23505) can upsert inactive duplicate names. */
+  let variantData = null;
   try {
     const {
       productId,
@@ -141,7 +144,7 @@ router.post('/', async (req, res, next) => {
       });
     }
 
-    const variantData = {
+    variantData = {
       productId: parseInt(productId),
       variantName: variantName.trim(),
       variantWeightGrams: variantWeightGrams ? parseInt(variantWeightGrams) : null,
@@ -168,8 +171,46 @@ router.post('/', async (req, res, next) => {
       },
     });
   } catch (error) {
-    // Handle unique constraint violation
-    if (error.code === '23505') {
+    // UNIQUE(product_id, variant_name) — soft-deleted rows stay in DB, so INSERT fails.
+    // Upsert: update the existing row (reactivate / refresh fields) when name matches.
+    if (error.code === '23505' && variantData) {
+      const isNameConstraint =
+        error.constraint === 'product_variant_product_id_variant_name_key' ||
+        (typeof error.detail === 'string' && error.detail.includes('variant_name'));
+      if (isNameConstraint) {
+        try {
+          const existingRow = await getVariantByProductIdAndExactName(
+            variantData.productId,
+            variantData.variantName
+          );
+          if (existingRow) {
+            const updated = await updateVariant(existingRow.variant_id, {
+              variantName: variantData.variantName,
+              variantWeightGrams: variantData.variantWeightGrams,
+              variantPrice: variantData.variantPrice,
+              isDefaultVariant: variantData.isDefaultVariant,
+              isActive: variantData.isActive,
+            });
+            return res.status(200).json({
+              success: true,
+              message: 'Variant updated (same name already existed for this product)',
+              variant: {
+                variantId: updated.variant_id,
+                productId: updated.product_id,
+                variantName: updated.variant_name,
+                variantWeightGrams: updated.variant_weight_grams,
+                variantPrice: parseFloat(updated.variant_price),
+                isDefaultVariant: updated.is_default_variant,
+                isActive: updated.is_active,
+                createdAt: updated.created_at,
+                updatedAt: updated.updated_at,
+              },
+            });
+          }
+        } catch (upErr) {
+          return next(upErr);
+        }
+      }
       return res.status(400).json({
         success: false,
         error: 'A variant with this name already exists for this product',

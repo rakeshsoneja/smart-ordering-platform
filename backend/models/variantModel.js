@@ -29,6 +29,15 @@ const getVariantById = async (variantId) => {
   return result.rows[0];
 };
 
+/** Same name for product, any is_active (soft-deleted rows still hold UNIQUE on name). */
+const getVariantByProductIdAndExactName = async (productId, variantName) => {
+  const result = await query(
+    'SELECT * FROM product_variant WHERE product_id = $1 AND variant_name = $2 LIMIT 1',
+    [productId, variantName]
+  );
+  return result.rows[0] || null;
+};
+
 // Get default variant for a product
 const getDefaultVariantByProductId = async (productId) => {
   const selectQuery = `
@@ -200,6 +209,7 @@ const createDefaultVariantForProduct = async (product) => {
 module.exports = {
   getVariantsByProductId,
   getVariantById,
+  getVariantByProductIdAndExactName,
   getDefaultVariantByProductId,
   createVariant,
   updateVariant,

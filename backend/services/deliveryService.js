@@ -1,5 +1,6 @@
 const { getActiveDeliveryConfig } = require('../models/deliveryConfigModel');
 const { getVariantById } = require('../models/variantModel');
+const { getProductById } = require('../models/productModel');
 
 /**
  * Delivery Service - Handles delivery charge calculations
@@ -14,27 +15,69 @@ const calculateTotalWeight = async (cartItems) => {
   let totalWeightGrams = 0;
 
   for (const item of cartItems) {
-    let itemWeightGrams = 0;
+    let itemWeightGrams = 0
+    let variantRow = null
 
-    // If variantId is provided, get weight from variant
-    if (item.variantId) {
+    const variantIdNum =
+      item.variantId != null && item.variantId !== ''
+        ? Number(item.variantId)
+        : NaN
+    const hasVariantId = !Number.isNaN(variantIdNum)
+
+    // Prefer DB weight when variantId resolves (authoritative)
+    if (hasVariantId) {
       try {
-        const variant = await getVariantById(item.variantId);
-        if (variant && variant.variant_weight_grams) {
-          itemWeightGrams = variant.variant_weight_grams;
+        variantRow = await getVariantById(variantIdNum)
+        if (variantRow != null && variantRow.variant_weight_grams != null) {
+          const w = Number(variantRow.variant_weight_grams)
+          if (!Number.isNaN(w)) itemWeightGrams = w
         }
       } catch (error) {
-        console.error(`Error fetching variant ${item.variantId}:`, error);
-        // Continue with weight 0 if variant not found
+        console.error(`Error fetching variant ${item.variantId}:`, error)
       }
-    } else if (item.variantWeightGrams) {
-      // If weight is already in cart item (from frontend)
-      itemWeightGrams = item.variantWeightGrams;
     }
-    // If no variant weight, itemWeightGrams remains 0
 
-    const quantity = Number(item.quantity) || 0;
-    totalWeightGrams += itemWeightGrams * quantity;
+    // Cart may carry correct grams while variantId is stale/missing after admin edits
+    if (itemWeightGrams === 0 && item.variantWeightGrams != null && item.variantWeightGrams !== '') {
+      const w = Number(item.variantWeightGrams)
+      if (!Number.isNaN(w)) itemWeightGrams = w
+    }
+
+    // Variant rows exist: never use legacy product/cart gms — products.unit_value is often the
+    // pre-variant pack (e.g. 500g) while the chosen variant is 250g, which doubled billing intermittently.
+    const skipLegacyProductGrams = variantRow != null
+
+    if (
+      !skipLegacyProductGrams &&
+      itemWeightGrams === 0 &&
+      item.unit === 'gms' &&
+      item.unitValue != null &&
+      item.unitValue !== ''
+    ) {
+      const w = Number(item.unitValue)
+      if (!Number.isNaN(w)) itemWeightGrams = w
+    }
+
+    // Products row: legacy gms only when this line is not tied to a real variant row (stale id / no variants)
+    if (!skipLegacyProductGrams && itemWeightGrams === 0) {
+      const productIdRaw = variantRow?.product_id ?? item.productId ?? item.id
+      const productId =
+        productIdRaw != null && productIdRaw !== '' ? Number(productIdRaw) : NaN
+      if (!Number.isNaN(productId)) {
+        try {
+          const product = await getProductById(productId)
+          if (product != null && product.unit === 'gms' && product.unit_value != null) {
+            const w = Number(product.unit_value)
+            if (!Number.isNaN(w)) itemWeightGrams = w
+          }
+        } catch (error) {
+          console.error(`Error fetching product ${productId} for delivery weight:`, error)
+        }
+      }
+    }
+
+    const quantity = Number(item.quantity) || 0
+    totalWeightGrams += itemWeightGrams * quantity
   }
 
   return totalWeightGrams;
@@ -57,13 +100,30 @@ const calculateDeliveryCharge = async (totalWeightGrams) => {
     };
   }
 
-  const weightUnitGrams = config.weight_unit_grams;
-  const chargeAmount = parseFloat(config.charge_amount);
+  const weightUnitGrams = Number(
+    config.weight_unit_grams ?? config.weightUnitGrams
+  )
+  const chargeAmount = parseFloat(
+    String(config.charge_amount ?? config.chargeAmount ?? '0')
+  )
+
+  if (
+    !weightUnitGrams ||
+    weightUnitGrams <= 0 ||
+    Number.isNaN(weightUnitGrams) ||
+    Number.isNaN(chargeAmount)
+  ) {
+    return { deliveryCharge: 0, config: null }
+  }
 
   // Calculate delivery charge proportionally
   // (total weight / weight unit) × charge amount
-  const units = totalWeightGrams / weightUnitGrams;
-  const deliveryCharge = units * chargeAmount;
+  const units = totalWeightGrams / weightUnitGrams
+  const deliveryCharge = units * chargeAmount
+
+  if (Number.isNaN(deliveryCharge) || !Number.isFinite(deliveryCharge)) {
+    return { deliveryCharge: 0, config: null }
+  }
 
   return {
     deliveryCharge: Math.round(deliveryCharge * 100) / 100, // Round to 2 decimal places
