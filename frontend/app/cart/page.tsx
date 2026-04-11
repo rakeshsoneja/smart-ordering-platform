@@ -92,7 +92,7 @@ export default function CartPage() {
               </div>
               <button 
                 onClick={handleCheckout}
-                className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 px-6 rounded-lg font-medium text-base sm:text-lg transition-colors"
+                className="w-full px-4 py-3 lg:py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-sm sm:text-base bg-[#4CAF50] text-white hover:bg-[#2E7D32] shadow-md hover:shadow-lg active:scale-[0.98]"
               >
                 Proceed to Checkout
               </button>
