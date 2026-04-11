@@ -30,7 +30,6 @@ export default function Footer({ className = '' }: FooterProps) {
             <div className="text-xs sm:text-sm lg:text-base text-gray-400 space-y-1">
               {showStoreAddress && (
                 <div className="mb-2 space-y-0.5">
-                  <p className="font-semibold text-gray-300">Store address</p>
                   {appConfig.shopAddressLine1 && (
                     <p className="break-words">{appConfig.shopAddressLine1}</p>
                   )}
