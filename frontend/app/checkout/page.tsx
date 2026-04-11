@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/cartContext'
 import axiosInstance from '@/lib/axiosConfig'
 import { appConfig } from '@/lib/config'
+import { buildStoredDeliveryAddress } from '@/lib/deliveryAddressFormat'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -20,6 +21,9 @@ export default function CheckoutPage() {
     customerPhone: '',
     email: '',
     deliveryAddress: '',
+    city: '',
+    pincode: '',
+    state: '',
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -87,14 +91,12 @@ export default function CheckoutPage() {
     }
 
     if (!formData.customerPhone.trim()) {
-      newErrors.customerPhone = 'Phone number is required'
+      newErrors.customerPhone = 'WhatsApp number is required'
     } else if (!/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/.test(formData.customerPhone)) {
-      newErrors.customerPhone = 'Invalid phone number format'
+      newErrors.customerPhone = 'Invalid WhatsApp number format'
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format'
     }
 
@@ -102,6 +104,43 @@ export default function CheckoutPage() {
       newErrors.deliveryAddress = 'Delivery address is required'
     } else if (formData.deliveryAddress.trim().length < 10) {
       newErrors.deliveryAddress = 'Address must be at least 10 characters'
+    }
+
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required'
+    } else if (formData.city.trim().length < 2) {
+      newErrors.city = 'City must be at least 2 characters'
+    }
+
+    if (!formData.pincode.trim()) {
+      newErrors.pincode = 'Pincode is required'
+    } else if (!/^\d{6}$/.test(formData.pincode.trim())) {
+      newErrors.pincode = 'Enter a valid 6-digit Indian PIN code'
+    }
+
+    if (!formData.state.trim()) {
+      newErrors.state = 'State is required'
+    } else if (formData.state.trim().length < 2) {
+      newErrors.state = 'State must be at least 2 characters'
+    }
+
+    if (
+      !newErrors.deliveryAddress &&
+      !newErrors.city &&
+      !newErrors.pincode &&
+      !newErrors.state &&
+      formData.deliveryAddress.trim().length >= 10
+    ) {
+      const deliveryAddressFull = buildStoredDeliveryAddress(
+        formData.deliveryAddress.trim(),
+        formData.city.trim(),
+        formData.pincode.trim(),
+        formData.state.trim()
+      )
+      if (deliveryAddressFull.length > 500) {
+        newErrors.deliveryAddress =
+          'Address, city, pincode, and state together are too long (max 500 characters). Shorten the address text.'
+      }
     }
 
     setErrors(newErrors)
@@ -160,7 +199,7 @@ export default function CheckoutPage() {
           prefill: {
             name: `${formData.firstName} ${formData.lastName}`,
             contact: formData.customerPhone,
-            email: formData.email,
+            ...(formData.email.trim() ? { email: formData.email.trim() } : {}),
           },
           theme: {
             color: '#ef4444',
@@ -214,11 +253,18 @@ export default function CheckoutPage() {
         totalPrice: item.price * item.quantity,
       }))
 
+      const deliveryAddressFull = buildStoredDeliveryAddress(
+        formData.deliveryAddress.trim(),
+        formData.city.trim(),
+        formData.pincode.trim(),
+        formData.state.trim()
+      )
+
       // Create order (amount should be item total, backend will add delivery charge)
       const response = await axiosInstance.post('/api/orders', {
         customerName: `${formData.firstName} ${formData.lastName}`,
         customerPhone: formData.customerPhone,
-        deliveryAddress: formData.deliveryAddress,
+        deliveryAddress: deliveryAddressFull,
         cartItems: cartItemsForBackend,
         amount: itemTotal, // Item total only, backend calculates delivery charge
         paymentMode: paymentMode,
@@ -349,7 +395,7 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="customerPhone" className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Phone Number *
+                    WhatsApp Number *
                   </label>
                   <input
                     type="tel"
@@ -360,7 +406,7 @@ export default function CheckoutPage() {
                     className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       errors.customerPhone ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Phone number"
+                    placeholder="WhatsApp number"
                   />
                   {errors.customerPhone && (
                     <p className="text-red-500 text-xs mt-0.5">{errors.customerPhone}</p>
@@ -369,7 +415,7 @@ export default function CheckoutPage() {
 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Email *
+                    Email
                   </label>
                   <input
                     type="email"
@@ -407,6 +453,71 @@ export default function CheckoutPage() {
                 {errors.deliveryAddress && (
                   <p className="text-red-500 text-xs mt-0.5">{errors.deliveryAddress}</p>
                 )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    autoComplete="address-level2"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                      errors.city ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="City"
+                  />
+                  {errors.city && (
+                    <p className="text-red-500 text-xs mt-0.5">{errors.city}</p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="pincode" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Pincode *
+                  </label>
+                  <input
+                    type="text"
+                    id="pincode"
+                    name="pincode"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    maxLength={6}
+                    value={formData.pincode}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                      errors.pincode ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="pincode"
+                  />
+                  {errors.pincode && (
+                    <p className="text-red-500 text-xs mt-0.5">{errors.pincode}</p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    State *
+                  </label>
+                  <input
+                    type="text"
+                    id="state"
+                    name="state"
+                    autoComplete="address-level1"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                      errors.state ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="State"
+                  />
+                  {errors.state && (
+                    <p className="text-red-500 text-xs mt-0.5">{errors.state}</p>
+                  )}
+                </div>
               </div>
 
               {/* Confirm Button - Modernized */}

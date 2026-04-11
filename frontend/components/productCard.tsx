@@ -281,9 +281,9 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         </div>
 
         {/* Variant/Unit Selection and Price */}
-        <div className="mb-3 lg:mb-4">
+        <div className="mb-2 lg:mb-3">
           {/* Variant-price-container: Vertical flex layout */}
-          <div className="flex flex-col items-start gap-1">
+          <div className="flex flex-col items-start gap-2">
             {/* Variant-container: Variant Dropdown or Unit Label */}
             <div>
               {hasVariants && availableVariants.length > 1 ? (
@@ -323,8 +323,8 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
               ) : null}
             </div>
             {/* Price-container: Price display */}
-            <div>
-              <span className="text-base lg:text-xl font-bold text-gray-900">
+            <div className="mt-1">
+              <span className="text-lg lg:text-2xl font-bold text-[#1B5E20] tracking-tight">
                 ₹{currentPrice.toFixed(2)}
               </span>
             </div>
@@ -343,13 +343,12 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock || (hasVariants && !isSelectedVariantAvailable)}
-                className={`w-full px-3 py-2.5 lg:py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 lg:gap-2 font-medium text-xs lg:text-sm shadow-sm ${
+                className={`w-full px-4 py-3 lg:py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-sm ${
                   isOutOfStock || (hasVariants && !isSelectedVariantAvailable)
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-gray-900 hover:bg-gray-800 text-white hover:shadow'
+                    : 'bg-[#4CAF50] text-white hover:bg-[#2E7D32] shadow-md hover:shadow-lg active:scale-[0.98]'
                 }`}
               >
-                <Plus className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                 <span>Add to Cart</span>
               </button>
               {/* Stock Availability Message */}

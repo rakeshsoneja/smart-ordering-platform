@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { Eye, ChevronDown, X, AlertCircle, CheckCircle2, Clock, XCircle, ShoppingBag, Printer } from 'lucide-react'
 import axiosInstance from '@/lib/axiosConfig'
 import PrintReceipt from '@/components/printReceipt'
+import {
+  formatDeliveryAddressForDisplay,
+  parseStoredDeliveryAddress,
+} from '@/lib/deliveryAddressFormat'
 
 interface OrderItem {
   id: number
@@ -450,7 +454,11 @@ export default function OrderMaintenancePage() {
                     </div>
                     <div className="sm:col-span-2">
                       <p className="text-sm text-gray-500">Delivery Address</p>
-                      <p className="text-base font-medium text-gray-900">{selectedOrder.delivery_address}</p>
+                      <p className="text-base font-medium text-gray-900 whitespace-pre-line break-words">
+                        {formatDeliveryAddressForDisplay(
+                          parseStoredDeliveryAddress(selectedOrder.delivery_address)
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>

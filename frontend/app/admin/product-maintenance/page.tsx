@@ -52,7 +52,9 @@ export default function ProductMaintenancePage() {
   const [variants, setVariants] = useState<Variant[]>([])
   const [inventoryData, setInventoryData] = useState<{ availableQuantityGrams: number; inventoryId?: number } | null>(null)
   const [inventoryLoading, setInventoryLoading] = useState(false)
-  const [localInventoryValue, setLocalInventoryValue] = useState<string>('')
+  /** `null` = show server value; string = user draft (may be "" for empty). */
+  const [localInventoryValue, setLocalInventoryValue] = useState<string | null>(null)
+  const [inventoryQtyFocused, setInventoryQtyFocused] = useState(false)
 
   // Fetch products
   const fetchProducts = async () => {
@@ -358,6 +360,11 @@ export default function ProductMaintenancePage() {
         }
       }
 
+      if (editingProduct && localInventoryValue !== null) {
+        await handleUpdateInventory(editingProduct.id, parseInventoryGramsForSave())
+        setLocalInventoryValue(null)
+      }
+
       await fetchProducts()
       handleCloseModal()
     } catch (err: any) {
@@ -406,6 +413,9 @@ export default function ProductMaintenancePage() {
     setSelectedImage(null)
     setImagePreview(null)
     setFormErrors({})
+    setInventoryData(null)
+    setLocalInventoryValue(null)
+    setInventoryQtyFocused(false)
     setShowModal(true)
   }
 
@@ -467,8 +477,9 @@ export default function ProductMaintenancePage() {
     // Fetch inventory for this product
     await fetchInventory(product.id)
     
-    // Reset local inventory value when editing
-    setLocalInventoryValue('')
+    // Reset local inventory draft when editing (show server value until user types)
+    setLocalInventoryValue(null)
+    setInventoryQtyFocused(false)
     
     setSelectedImage(null)
     setImagePreview(product.image || null) // Show existing image as preview
@@ -487,7 +498,19 @@ export default function ProductMaintenancePage() {
     setUploading(false)
     setInventoryData(null)
     setInventoryLoading(false)
-    setLocalInventoryValue('')
+    setLocalInventoryValue(null)
+    setInventoryQtyFocused(false)
+  }
+
+  const parseInventoryGramsForSave = (): number => {
+    if (localInventoryValue === null) {
+      return inventoryData?.availableQuantityGrams ?? 0
+    }
+    const t = localInventoryValue.trim()
+    if (t === '') return 0
+    const n = parseInt(t, 10)
+    if (Number.isNaN(n) || n < 0) return 0
+    return n
   }
 
   // Update inventory for a product (product-level only)
@@ -784,17 +807,21 @@ export default function ProductMaintenancePage() {
             onClick={handleCloseModal}
           >
             <div 
-              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto my-8"
+              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto my-8 relative z-[1]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900">
                   {editingProduct ? 'Edit Product' : 'Add Product'}
                 </h2>
                 <button
                   type="button"
-                  onClick={handleCloseModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleCloseModal()
+                  }}
+                  className="relative z-30 p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5" />
@@ -1054,22 +1081,52 @@ export default function ProductMaintenancePage() {
                           <div className="flex-1">
                             <p className="text-xs text-gray-600 mb-1">Available Quantity (grams)</p>
                             <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="0"
-                                value={localInventoryValue !== '' ? localInventoryValue : (inventoryData?.availableQuantityGrams ?? '')}
-                                onChange={(e) => {
-                                  setLocalInventoryValue(e.target.value)
-                                }}
-                                onBlur={(e) => {
-                                  const newQuantity = e.target.value ? parseInt(e.target.value) : 0
-                                  handleUpdateInventory(editingProduct.id, newQuantity)
-                                  setLocalInventoryValue('') // Reset after update
-                                }}
-                                disabled={inventoryLoading}
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent disabled:opacity-50"
-                                placeholder="0"
-                              />
+                              <div className="flex-1 flex items-center gap-1 min-w-0 relative">
+                                <input
+                                  id="product-inventory-qty"
+                                  type="text"
+                                  inputMode="numeric"
+                                  autoComplete="off"
+                                  value={
+                                    localInventoryValue !== null
+                                      ? localInventoryValue
+                                      : String(inventoryData?.availableQuantityGrams ?? 0)
+                                  }
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(/\D/g, '')
+                                    setLocalInventoryValue(v)
+                                  }}
+                                  onFocus={(e) => {
+                                    setInventoryQtyFocused(true)
+                                    requestAnimationFrame(() => e.target.select())
+                                  }}
+                                  onBlur={() => {
+                                    setInventoryQtyFocused(false)
+                                    const t =
+                                      localInventoryValue !== null
+                                        ? localInventoryValue.trim()
+                                        : String(inventoryData?.availableQuantityGrams ?? 0).trim()
+                                    const newQuantity = t === '' ? 0 : parseInt(t, 10) || 0
+                                    handleUpdateInventory(editingProduct.id, newQuantity)
+                                    setLocalInventoryValue(null)
+                                  }}
+                                  disabled={inventoryLoading}
+                                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent disabled:opacity-50"
+                                  placeholder="0"
+                                />
+                                {inventoryQtyFocused && (
+                                  <button
+                                    type="button"
+                                    title="Clear"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => setLocalInventoryValue('')}
+                                    disabled={inventoryLoading}
+                                    className="shrink-0 px-2 py-1 text-xs text-gray-600 hover:text-red-600 hover:bg-red-50 rounded border border-gray-200 disabled:opacity-50"
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => {

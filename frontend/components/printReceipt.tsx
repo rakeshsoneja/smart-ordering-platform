@@ -1,6 +1,10 @@
 'use client'
 
-import { appConfig } from '@/lib/config'
+import { appConfig, formatReceiptCityPinStateLine } from '@/lib/config'
+import {
+  formatDeliveryAddressForDisplay,
+  parseStoredDeliveryAddress,
+} from '@/lib/deliveryAddressFormat'
 
 export interface PrintReceiptOrderItem {
   id: number
@@ -37,6 +41,11 @@ interface PrintReceiptProps {
 }
 
 export default function PrintReceipt({ order, className = '' }: PrintReceiptProps) {
+  const cityPinStateLine = formatReceiptCityPinStateLine()
+  const customerDeliveryDisplay = formatDeliveryAddressForDisplay(
+    parseStoredDeliveryAddress(order.delivery_address)
+  )
+
   // Format date to dd/mm/yyyy
   const formatDate = (dateString?: string): string => {
     if (!dateString) return ''
@@ -55,9 +64,18 @@ export default function PrintReceipt({ order, className = '' }: PrintReceiptProp
     <div className={`print-receipt-container ${className}`}>
       <div className="max-w-lg mx-auto p-6">
         {/* 1. Store Header - Top Center */}
-        <div className="text-center mb-6 border-b-2 border-gray-900 pb-4">
+        <div className="text-center flex flex-col items-center mb-6 border-b-2 border-gray-900 pb-4">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{appConfig.shopName}</h1>
-          <p className="text-base text-gray-900">Phone: {appConfig.shopPhoneNumber}</p>
+          {appConfig.shopAddressLine1 && (
+            <p className="text-base text-gray-900 break-words max-w-full">{appConfig.shopAddressLine1}</p>
+          )}
+          {appConfig.shopAddressLine2 && (
+            <p className="text-base text-gray-900 break-words max-w-full">{appConfig.shopAddressLine2}</p>
+          )}
+          {cityPinStateLine && (
+            <p className="text-base text-gray-900 break-words max-w-full">{cityPinStateLine}</p>
+          )}
+          <p className="text-base text-gray-900 mt-1">Phone: {appConfig.shopPhoneNumber}</p>
         </div>
 
         {/* 2. Customer Delivery Address Section */}
@@ -65,7 +83,7 @@ export default function PrintReceipt({ order, className = '' }: PrintReceiptProp
           <p className="text-base font-bold text-gray-900 mb-3">Delivery Address:</p>
           <div className="text-sm text-gray-900 space-y-1">
             <p className="font-semibold">{order.customer_name}</p>
-            <div className="whitespace-pre-line">{order.delivery_address}</div>
+            <div className="break-words whitespace-pre-line">{customerDeliveryDisplay}</div>
             <p className="mt-2">Phone: {order.customer_phone}</p>
           </div>
         </div>

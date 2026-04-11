@@ -1,10 +1,13 @@
-import { appConfig } from '@/lib/config'
+import { appConfig, formatReceiptCityPinStateLine, hasAnyShopAddressField } from '@/lib/config'
 
 interface FooterProps {
   className?: string
 }
 
 export default function Footer({ className = '' }: FooterProps) {
+  const cityPinStateLine = formatReceiptCityPinStateLine()
+  const showStoreAddress = hasAnyShopAddressField()
+
   return (
     <footer className={`bg-gray-800 text-white mt-auto ${className}`}>
       <div className="max-w-md lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -25,6 +28,18 @@ export default function Footer({ className = '' }: FooterProps) {
           <div>
             <h3 className="text-sm sm:text-base font-semibold mb-2 sm:mb-3">Contact</h3>
             <div className="text-xs sm:text-sm lg:text-base text-gray-400 space-y-1">
+              {showStoreAddress && (
+                <div className="mb-2 space-y-0.5">
+                  <p className="font-semibold text-gray-300">Store address</p>
+                  {appConfig.shopAddressLine1 && (
+                    <p className="break-words">{appConfig.shopAddressLine1}</p>
+                  )}
+                  {appConfig.shopAddressLine2 && (
+                    <p className="break-words">{appConfig.shopAddressLine2}</p>
+                  )}
+                  {cityPinStateLine && <p className="break-words">{cityPinStateLine}</p>}
+                </div>
+              )}
               <p>
                 Phone: <a href={`tel:${appConfig.shopPhoneNumber.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{appConfig.shopPhoneNumber}</a>
               </p>

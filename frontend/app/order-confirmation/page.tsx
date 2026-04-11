@@ -3,6 +3,10 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import axiosInstance from '@/lib/axiosConfig'
+import {
+  formatDeliveryAddressForDisplay,
+  parseStoredDeliveryAddress,
+} from '@/lib/deliveryAddressFormat'
 
 function OrderConfirmationContent() {
   const searchParams = useSearchParams()
@@ -81,6 +85,10 @@ function OrderConfirmationContent() {
   const deliveryCharge = order.deliveryCharge != null ? parseFloat(order.deliveryCharge) : 0
   const totalAmount = order.amount != null ? parseFloat(order.amount) : (itemTotal + deliveryCharge)
   
+  const deliveryAddressDisplay = formatDeliveryAddressForDisplay(
+    parseStoredDeliveryAddress(order.deliveryAddress ?? '')
+  )
+
   const paymentModeText = order.paymentMode === 'razorpay' ? 'UPI / Card' : 'Cash on Delivery'
   const statusText = order.status === 'paid' ? 'Confirmed' : 
                      order.status === 'confirmed' ? 'Confirmed' :
@@ -137,7 +145,7 @@ function OrderConfirmationContent() {
               <p><span className="font-medium">Name:</span> {order.customerName}</p>
               <p><span className="font-medium">Phone:</span> {order.customerPhone}</p>
               <p><span className="font-medium">Address:</span></p>
-              <p className="pl-2 sm:pl-4 break-words">{order.deliveryAddress}</p>
+              <p className="pl-2 sm:pl-4 break-words whitespace-pre-line">{deliveryAddressDisplay}</p>
             </div>
           </div>
 
