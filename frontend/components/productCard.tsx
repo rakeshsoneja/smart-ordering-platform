@@ -268,8 +268,8 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
       {/* Product Info */}
       <div className="px-3 py-3 lg:px-4 lg:py-4 flex-1 flex flex-col">
-        {/* Product Name */}
-        <h3 className="mb-1 lg:mb-2 text-gray-900 text-sm lg:text-lg font-bold leading-tight">
+        {/* Product Name — reserve 2 lines so variant row aligns across grid cards */}
+        <h3 className="mb-1 lg:mb-2 min-h-[2.75rem] lg:min-h-[3rem] text-gray-900 text-sm lg:text-lg font-bold leading-tight line-clamp-2 overflow-hidden">
           {product.name}
         </h3>
         
