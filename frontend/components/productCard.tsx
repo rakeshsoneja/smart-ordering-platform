@@ -268,13 +268,13 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
       {/* Product Info — tighter top padding under image */}
       <div className="px-3 pt-2 pb-3 lg:px-4 lg:pt-2.5 lg:pb-4 flex-1 flex flex-col">
-        {/* Product Name — min-h for variant row; items-start aligns first title line across cards */}
-        <h3 className="mb-0.5 lg:mb-1 flex min-h-[2.75rem] lg:min-h-[3rem] items-start text-gray-900 text-sm lg:text-lg font-bold leading-tight">
+        {/* Product Name — fixed height so description/variant rows align across grid cards */}
+        <h3 className="mb-0.5 lg:mb-1 flex h-[2.75rem] lg:h-[3rem] shrink-0 items-start overflow-hidden text-gray-900 text-sm lg:text-lg font-bold leading-tight">
           <span className="line-clamp-2 overflow-hidden">{product.name}</span>
         </h3>
-        
-        {/* Description - Fixed height to ensure consistent alignment across cards */}
-        <div className="mb-2 lg:mb-3 min-h-[2.5rem] lg:min-h-[2.75rem]">
+
+        {/* Description — fixed height so first line aligns across cards */}
+        <div className="mb-2 lg:mb-3 h-[2.5rem] lg:h-[2.75rem] shrink-0 overflow-hidden">
           <p className="text-xs lg:text-sm text-gray-600 line-clamp-2 leading-snug">
             {product.description}
           </p>
