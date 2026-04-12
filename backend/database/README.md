@@ -12,9 +12,9 @@ psql -U postgres -d sweet_shop_db -f database/schema.sql
 \i database/schema.sql
 ```
 
-## Step 2: Seed the Products
+## Step 2: Seed the Products (optional, on demand)
 
-After the table is created, run the seed script to add the original products:
+The API server does **not** run this automatically. After the schema exists, you can optionally load the bundled demo products:
 
 ```bash
 # From the backend directory

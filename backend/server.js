@@ -16,7 +16,6 @@ const inventoryRoutes = require('./routes/inventoryRoutes');
 const whatsAppWebhook = require('./whatsapp/whatsAppWebhook');
 const publicOrderRoutes = require('./routes/publicOrderRoutes');
 const initSchema = require('./database/initSchema');
-const seedProducts = require('./database/seedProducts');
 
 /**
  * Express Server Setup
@@ -79,12 +78,12 @@ app.use((req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Initialize database schema and seed products before starting server
+// Initialize database schema (and JS migrations inside initSchema) before starting server.
+// Product seeding is on-demand only: `npm run seed:products` from the backend directory.
 const startServer = async () => {
   try {
     console.log('🔧 Initializing database...');
     await initSchema();
-    await seedProducts();
     console.log('✅ Database initialization completed');
     
     // Start server after database is ready

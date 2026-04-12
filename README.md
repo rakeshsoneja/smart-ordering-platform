@@ -70,6 +70,11 @@ orderingapp/
      ```bash
      psql -U postgres -d sweet_shop_db -f database/schema.sql
      ```
+   - Alternatively, the first backend start runs `initSchema()` (applies `schema.sql` plus small JS migrations). Manual `psql` is still fine for production.
+   - **Product catalog is not auto-seeded.** Use the admin UI, or load the demo catalog on demand:
+     ```bash
+     cd backend && npm run seed:products
+     ```
 
 4. **Environment Variables**
    - Copy `.env.example` to `.env`

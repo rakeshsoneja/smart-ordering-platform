@@ -27,8 +27,15 @@ Backend API for the sweet shop ordering system built with Node.js, Express.js, a
      ```bash
      psql -U postgres -d sweet_shop_db -f database/schema.sql
      ```
+   - Or rely on `initSchema()` on first server start (see `server.js`).
 
-3. **Environment Variables**
+3. **Optional: demo product seed (on demand)**  
+   The server does **not** insert default products on startup. To load the bundled demo catalog (skips if `products` already has rows):
+   ```bash
+   npm run seed:products
+   ```
+
+4. **Environment Variables**
    - Copy `.env.example` to `.env`
    - Fill in all required environment variables:
      - Database credentials
@@ -36,7 +43,7 @@ Backend API for the sweet shop ordering system built with Node.js, Express.js, a
      - Twilio credentials (from Twilio Console)
      - Webhook secret
 
-4. **Run the Server**
+5. **Run the Server**
    ```bash
    # Development mode (with nodemon)
    npm run dev
