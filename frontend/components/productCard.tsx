@@ -266,10 +266,10 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         )}
       </div>
 
-      {/* Product Info */}
-      <div className="px-3 py-3 lg:px-4 lg:py-4 flex-1 flex flex-col">
-        {/* Product Name — reserve 2 lines for grid alignment; items-end keeps single-line titles tight to description */}
-        <h3 className="mb-0.5 lg:mb-1 flex min-h-[2.75rem] lg:min-h-[3rem] items-end text-gray-900 text-sm lg:text-lg font-bold leading-tight">
+      {/* Product Info — tighter top padding under image */}
+      <div className="px-3 pt-2 pb-3 lg:px-4 lg:pt-2.5 lg:pb-4 flex-1 flex flex-col">
+        {/* Product Name — min-h for variant row; items-start aligns first title line across cards */}
+        <h3 className="mb-0.5 lg:mb-1 flex min-h-[2.75rem] lg:min-h-[3rem] items-start text-gray-900 text-sm lg:text-lg font-bold leading-tight">
           <span className="line-clamp-2 overflow-hidden">{product.name}</span>
         </h3>
         
