@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import ProductCard from '@/components/productCard'
 import { appConfig } from '@/lib/config'
 import axiosInstance from '@/lib/axiosConfig'
+import { getAppTheme } from '@/lib/theme'
 
 interface Variant {
   variantId: number
@@ -40,6 +41,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [fetchKey, setFetchKey] = useState(0)
+  const themeKey = appConfig.themeKey?.trim().toLowerCase()
+  const isSweetshopTheme = themeKey === 'sweetshop'
+  const theme = getAppTheme()
 
   // Fetch products with retries (helps flaky mobile / cold API on first paint)
   useEffect(() => {
@@ -103,7 +107,10 @@ export default function Home() {
           <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
             Fresh Products
           </h2>
-          <p className="text-sm lg:text-base text-gray-600">
+          <p
+            className="text-sm lg:text-base text-gray-600"
+            style={isSweetshopTheme ? { color: theme.textSecondary } : undefined}
+          >
             Quality products delivered fresh to your door
         </p>
         </section>
@@ -118,6 +125,14 @@ export default function Home() {
                   ? "bg-gray-900 text-white shadow-sm"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
+          style={
+            isSweetshopTheme
+              ? {
+                  backgroundColor: selectedCategory === 'all' ? theme.primary : theme.primaryLight,
+                  color: selectedCategory === 'all' ? '#fff' : theme.textPrimary,
+                }
+              : undefined
+          }
         >
           All Items
         </button>
@@ -128,6 +143,14 @@ export default function Home() {
                   ? "bg-gray-900 text-white shadow-sm"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
+          style={
+            isSweetshopTheme
+              ? {
+                  backgroundColor: selectedCategory === 'sweet' ? theme.primary : theme.primaryLight,
+                  color: selectedCategory === 'sweet' ? '#fff' : theme.textPrimary,
+                }
+              : undefined
+          }
         >
               Sweets
         </button>
@@ -138,6 +161,14 @@ export default function Home() {
                   ? "bg-gray-900 text-white shadow-sm"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
+          style={
+            isSweetshopTheme
+              ? {
+                  backgroundColor: selectedCategory === 'savory' ? theme.primary : theme.primaryLight,
+                  color: selectedCategory === 'savory' ? '#fff' : theme.textPrimary,
+                }
+              : undefined
+          }
         >
               Savories
         </button>
@@ -148,6 +179,14 @@ export default function Home() {
                   ? "bg-gray-900 text-white shadow-sm"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
+              style={
+                isSweetshopTheme
+                  ? {
+                      backgroundColor: selectedCategory === 'gift' ? theme.primary : theme.primaryLight,
+                      color: selectedCategory === 'gift' ? '#fff' : theme.textPrimary,
+                    }
+                  : undefined
+              }
             >
               Gifts
         </button>

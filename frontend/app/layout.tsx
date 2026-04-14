@@ -4,6 +4,7 @@ import './globals.css'
 import AppShell from '@/components/AppShell'
 import { Providers } from './providers'
 import { appConfig } from '@/lib/config'
+import { getAppTheme } from '@/lib/theme'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -23,13 +24,15 @@ export const metadata: Metadata = {
   description: 'Order your favorite sweets and savories online with easy payment options',
 }
 
+const appTheme = getAppTheme()
+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#FF6A3D',
+  themeColor: appTheme.metaThemeColor,
 }
 
 export default function RootLayout({

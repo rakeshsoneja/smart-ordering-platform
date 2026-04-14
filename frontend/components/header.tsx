@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, ShoppingCart, Search, Menu } from 'lucide-react'
 import { appConfig } from '@/lib/config'
+import { getAppTheme } from '@/lib/theme'
 import { useCart } from '@/context/cartContext'
 import AdminHamburgerMenu from './adminHamburgerMenu'
 
@@ -25,6 +26,8 @@ export default function Header() {
   const isShopActive = pathname === '/'
   const isCartActive = pathname === '/cart'
   const isSearchActive = pathname === '/search'
+  const appTheme = getAppTheme()
+  const isSweetshopTheme = appConfig.themeKey?.trim().toLowerCase() === 'sweetshop'
 
   return (
     <>
@@ -50,7 +53,10 @@ export default function Header() {
               </Link>
 
               {/* Brand Title */}
-              <h1 className="text-xl lg:text-2xl font-bold text-[#C41E3A] leading-tight whitespace-nowrap">
+              <h1
+                className={`text-xl lg:text-2xl font-bold leading-tight whitespace-nowrap ${isSweetshopTheme ? '' : 'text-[#C41E3A]'}`}
+                style={isSweetshopTheme ? { color: appTheme.primary } : undefined}
+              >
                 {appConfig.shopName || 'Siva Ganapathy Sweets'}
               </h1>
             </div>
@@ -98,7 +104,20 @@ export default function Header() {
                   <div className="relative">
                     <ShoppingCart className="w-5 h-5" strokeWidth={isCartActive ? 2.5 : 2} />
                     {cartItemCount > 0 && (
-                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#FF6B6B] text-white rounded-full flex items-center justify-center text-xs font-semibold">
+                      <span
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-[#FF6B6B] text-white rounded-full flex items-center justify-center text-xs font-semibold"
+                        style={
+                          isSweetshopTheme
+                            ? {
+                                backgroundColor: '#2E7D32',
+                                color: '#FFFFFF',
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                              }
+                            : undefined
+                        }
+                      >
                         {cartItemCount}
                       </span>
                     )}
@@ -126,7 +145,20 @@ export default function Header() {
                 >
                   <ShoppingCart className="w-4 h-4" strokeWidth={isCartActive ? 2.5 : 2} />
                   {cartItemCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#FF6B6B] text-white rounded-full flex items-center justify-center text-[10px] font-semibold">
+                    <span
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF6B6B] text-white rounded-full flex items-center justify-center text-[10px] font-semibold"
+                      style={
+                        isSweetshopTheme
+                          ? {
+                              backgroundColor: '#2E7D32',
+                              color: '#FFFFFF',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                            }
+                          : undefined
+                      }
+                    >
                       {cartItemCount}
                     </span>
                   )}

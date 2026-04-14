@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import axiosInstance from '@/lib/axiosConfig'
+import { appConfig } from '@/lib/config'
+import { getAppTheme } from '@/lib/theme'
 import {
   formatDeliveryAddressForDisplay,
   parseStoredDeliveryAddress,
@@ -15,6 +17,9 @@ function OrderConfirmationContent() {
   const status = searchParams.get('status')
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const themeKey = appConfig.themeKey?.trim().toLowerCase()
+  const isSweetshopTheme = themeKey === 'sweetshop'
+  const theme = getAppTheme()
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -49,7 +54,10 @@ function OrderConfirmationContent() {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-[#FFF7F3] flex items-center justify-center pt-14 pb-16 lg:pb-0">
+      <div
+        className="min-h-screen bg-[#FFF7F3] flex items-center justify-center pt-14 pb-16 lg:pb-0"
+        style={isSweetshopTheme ? { backgroundColor: theme.softBackground } : undefined}
+      >
         <div className="container mx-auto px-4 py-8 text-center max-w-md">
           <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4">Order Not Found</h1>
@@ -60,7 +68,12 @@ function OrderConfirmationContent() {
             </p>
             <button
               onClick={() => router.push('/')}
-              className="bg-gradient-to-r from-[#FF6A3D] to-[#FF3D68] text-white px-6 py-3 rounded-full hover:shadow-lg hover:shadow-[#FF6A3D]/30 transition-all font-semibold"
+              className="text-white px-6 py-3 rounded-full transition-all font-semibold"
+              style={{
+                background: isSweetshopTheme
+                  ? `linear-gradient(to right, ${theme.gradientFrom}, ${theme.gradientTo})`
+                  : 'linear-gradient(to right, #FF6A3D, #FF3D68)',
+              }}
             >
               Continue Shopping
             </button>
@@ -97,7 +110,10 @@ function OrderConfirmationContent() {
                      'Pending'
 
   return (
-    <div className="min-h-screen bg-[#FFF7F3]">
+    <div
+      className="min-h-screen bg-[#FFF7F3]"
+      style={isSweetshopTheme ? { backgroundColor: theme.softBackground } : undefined}
+    >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-3xl">
         <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
           {/* Line 1: Order Number */}
@@ -133,7 +149,12 @@ function OrderConfirmationContent() {
               )}
               <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                 <span className="text-lg sm:text-xl font-bold text-gray-800">Total:</span>
-                <span className="text-lg sm:text-xl font-bold text-[#FF6A3D]">₹{totalAmount.toFixed(2)}</span>
+                <span
+                  className="text-lg sm:text-xl font-bold text-[#FF6A3D]"
+                  style={isSweetshopTheme ? { color: theme.primary } : undefined}
+                >
+                  ₹{totalAmount.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
@@ -162,7 +183,12 @@ function OrderConfirmationContent() {
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <button
               onClick={() => router.push('/')}
-              className="flex-1 bg-gradient-to-r from-[#FF6A3D] to-[#FF3D68] text-white py-3 sm:py-3.5 rounded-full font-semibold hover:shadow-xl hover:shadow-[#FF6A3D]/30 active:scale-95 transition-all touch-manipulation text-base sm:text-lg shadow-lg"
+              className="flex-1 text-white py-3 sm:py-3.5 rounded-full font-semibold active:scale-95 transition-all touch-manipulation text-base sm:text-lg shadow-lg"
+              style={{
+                background: isSweetshopTheme
+                  ? `linear-gradient(to right, ${theme.gradientFrom}, ${theme.gradientTo})`
+                  : 'linear-gradient(to right, #FF6A3D, #FF3D68)',
+              }}
             >
               Continue Shopping
             </button>

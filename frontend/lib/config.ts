@@ -11,6 +11,7 @@ function trimEnv(value: string | undefined): string {
 
 export const appConfig = {
   shopName: process.env.NEXT_PUBLIC_SHOP_NAME || 'Siva Ganapathy Sweets',
+  themeKey: process.env.NEXT_PUBLIC_THEME_KEY || 'default',
   shopDescription:
     process.env.NEXT_PUBLIC_SHOP_DESCRIPTION ||
     'Your one-stop destination for delicious sweets and savories.',

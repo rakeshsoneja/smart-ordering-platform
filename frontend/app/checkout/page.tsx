@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/cartContext'
 import axiosInstance from '@/lib/axiosConfig'
 import { appConfig } from '@/lib/config'
 import { buildStoredDeliveryAddress } from '@/lib/deliveryAddressFormat'
+import { getAppTheme } from '@/lib/theme'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -27,6 +28,14 @@ export default function CheckoutPage() {
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const appTheme = getAppTheme()
+  const ctaVars = {
+    '--cta-bg': appTheme.primary,
+    '--cta-bg-hover': appTheme.primaryHover,
+    '--cta-grad-from': appTheme.gradientFrom,
+    '--cta-grad-to': appTheme.gradientTo,
+    '--page-soft-bg': appTheme.softBackground,
+  } as CSSProperties
 
   const itemTotal = getTotalAmount()
 
@@ -204,7 +213,7 @@ export default function CheckoutPage() {
             ...(formData.email.trim() ? { email: formData.email.trim() } : {}),
           },
           theme: {
-            color: '#ef4444',
+            color: appTheme.primary,
           },
           modal: {
             ondismiss: function() {
@@ -332,7 +341,8 @@ export default function CheckoutPage() {
           <p className="text-gray-600 mb-6">Add some items to your cart to proceed with checkout</p>
           <button
             onClick={() => router.push('/')}
-            className="bg-gradient-to-r from-[#FF6A3D] to-[#FF3D68] text-white px-8 py-3 rounded-full hover:shadow-xl hover:shadow-[#FF6A3D]/30 transition-all duration-300 font-bold shadow-lg"
+            style={ctaVars}
+            className="bg-gradient-to-r from-[var(--cta-grad-from)] to-[var(--cta-grad-to)] text-white px-8 py-3 rounded-full hover:shadow-xl transition-all duration-300 font-bold shadow-lg"
           >
             Continue Shopping
           </button>
@@ -342,7 +352,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFF7F3]">
+    <div className="min-h-screen bg-[var(--page-soft-bg)]" style={ctaVars}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-6xl">
         <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
           {/* Column 1: Delivery Details Form Section - Left on Desktop/Tablet, Second on Mobile */}
@@ -527,10 +537,11 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={loading}
+                style={ctaVars}
                 className={`w-full md:w-auto md:max-w-xs mt-2 touch-manipulation px-4 py-3 lg:py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-sm sm:text-base ${
                   loading
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-                    : 'bg-[#4CAF50] text-white hover:bg-[#2E7D32] shadow-md hover:shadow-lg active:scale-[0.98]'
+                    : 'bg-[var(--cta-bg)] text-white hover:bg-[var(--cta-bg-hover)] shadow-md hover:shadow-lg active:scale-[0.98]'
                 }`}
               >
                 {loading ? (

@@ -4,11 +4,21 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/cartContext'
 import { CartItem } from '@/components/cart-item'
+import { type CSSProperties } from 'react'
+import { getAppTheme } from '@/lib/theme'
 
 export default function CartPage() {
   const router = useRouter()
   const { cartItems, removeFromCart, updateQuantity, getTotalAmount, stockAvailabilityMessage } = useCart()
   const totalAmount = getTotalAmount()
+  const appTheme = getAppTheme()
+  const ctaVars = {
+    '--cta-bg': appTheme.primary,
+    '--cta-bg-hover': appTheme.primaryHover,
+    '--cta-grad-from': appTheme.gradientFrom,
+    '--cta-grad-to': appTheme.gradientTo,
+    '--page-soft-bg': appTheme.softBackground,
+  } as CSSProperties
 
   const handleCheckout = () => {
     router.push('/checkout')
@@ -20,7 +30,7 @@ export default function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-[#FFF7F3]">
+      <div className="min-h-screen bg-[var(--page-soft-bg)]" style={ctaVars}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-3xl">
           <h1 className="mb-4 sm:mb-6 text-gray-800 text-xl sm:text-2xl md:text-3xl font-bold">Shopping Cart</h1>
           <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
@@ -28,7 +38,8 @@ export default function CartPage() {
             <p className="text-gray-600 mb-6">Your cart is empty</p>
             <Link 
               href="/" 
-              className="inline-block bg-gradient-to-r from-[#FF6A3D] to-[#FF3D68] text-white px-8 py-3 rounded-full hover:shadow-xl hover:shadow-[#FF6A3D]/30 transition-all duration-300 font-bold shadow-lg"
+              style={ctaVars}
+              className="inline-block bg-gradient-to-r from-[var(--cta-grad-from)] to-[var(--cta-grad-to)] text-white px-8 py-3 rounded-full hover:shadow-xl transition-all duration-300 font-bold shadow-lg"
             >
               Continue Shopping
             </Link>
@@ -92,7 +103,8 @@ export default function CartPage() {
               </div>
               <button 
                 onClick={handleCheckout}
-                className="w-full px-4 py-3 lg:py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-sm sm:text-base bg-[#4CAF50] text-white hover:bg-[#2E7D32] shadow-md hover:shadow-lg active:scale-[0.98]"
+                style={ctaVars}
+                className="w-full px-4 py-3 lg:py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-sm sm:text-base bg-[var(--cta-bg)] text-white hover:bg-[var(--cta-bg-hover)] shadow-md hover:shadow-lg active:scale-[0.98]"
               >
                 Proceed to Checkout
               </button>

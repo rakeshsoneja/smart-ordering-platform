@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { Plus, Minus } from 'lucide-react'
 import { useCart } from '@/context/cartContext'
+import { appConfig } from '@/lib/config'
+import { getAppTheme } from '@/lib/theme'
 
 interface Variant {
   variantId: number
@@ -34,6 +36,13 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const { cartItems, addToCart, updateQuantity, removeFromCart, stockAvailabilityMessage, clearStockMessage } = useCart()
+  const appTheme = getAppTheme()
+  const isSweetshopTheme = appConfig.themeKey?.trim().toLowerCase() === 'sweetshop'
+  const ctaVars = {
+    '--cta-bg': appTheme.primary,
+    '--cta-bg-hover': appTheme.primaryHover,
+    '--cta-bg-disabled': appTheme.primaryMuted,
+  } as CSSProperties
   
   // Determine if product uses variants
   const availableVariants = (product.variants || []).filter(v => v.isActive)
@@ -258,8 +267,29 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         
         {/* Out of Stock Overlay - modern ecommerce style */}
         {isOutOfStock && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none transition-all duration-200">
-            <span className="px-4 py-2 rounded-full bg-black/60 text-white text-xs lg:text-sm font-semibold tracking-[0.18em] uppercase shadow-md">
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none transition-all duration-200"
+            style={
+              isSweetshopTheme
+                ? {
+                    backgroundColor: 'rgba(46,125,50,0.1)',
+                    border: '1px solid #A5D6A7',
+                  }
+                : undefined
+            }
+          >
+            <span
+              className="px-4 py-2 rounded-full bg-black/60 text-white text-xs lg:text-sm font-semibold tracking-[0.18em] uppercase shadow-md"
+              style={
+                isSweetshopTheme
+                  ? {
+                      color: appTheme.textPrimary,
+                      backgroundColor: 'transparent',
+                      boxShadow: 'none',
+                    }
+                  : undefined
+              }
+            >
               Out of stock
             </span>
           </div>
@@ -275,7 +305,10 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 
         {/* Description — fixed height so first line aligns across cards */}
         <div className="mb-2 lg:mb-3 h-[2.5rem] lg:h-[2.75rem] shrink-0 overflow-hidden">
-          <p className="text-xs lg:text-sm text-gray-600 line-clamp-2 leading-snug">
+          <p
+            className="text-xs lg:text-sm text-gray-600 line-clamp-2 leading-snug"
+            style={isSweetshopTheme ? { color: appTheme.textSecondary } : undefined}
+          >
             {product.description}
           </p>
         </div>
@@ -286,7 +319,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           <div className="flex flex-col items-start gap-2">
             {/* Variant-container: Variant Dropdown or Unit Label */}
             <div>
-              {hasVariants && availableVariants.length > 1 ? (
+              {hasVariants && availableVariants.length > 1 && orderableVariants.length > 0 ? (
                 <select
                   value={effectiveSelectedVariantId || ''}
                   onChange={(e) => handleVariantChange(Number(e.target.value))}
@@ -311,26 +344,46 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
                     )
                   })}
                 </select>
+              ) : hasVariants && availableVariants.length > 1 ? (
+                <span
+                  className="text-xs lg:text-sm text-gray-400"
+                  style={isSweetshopTheme ? { color: appTheme.textSecondary } : undefined}
+                >
+                  {effectiveSelectedVariant?.variantName || availableVariants[0]?.variantName || 'Variant'}
+                  {' (Out of Stock)'}
+                </span>
               ) : hasVariants && availableVariants.length === 1 && effectiveSelectedVariant ? (
-                <span className={`text-xs lg:text-sm ${isOutOfStock || !isSelectedVariantAvailable ? 'text-gray-400' : 'text-gray-500'}`}>
+                <span
+                  className={`text-xs lg:text-sm ${isOutOfStock || !isSelectedVariantAvailable ? 'text-gray-400' : 'text-gray-500'}`}
+                  style={isSweetshopTheme ? { color: appTheme.textSecondary } : undefined}
+                >
                   {effectiveSelectedVariant.variantName}
                   {!isSelectedVariantAvailable && ' (Out of Stock)'}
                 </span>
               ) : unitLabel ? (
-                <span className={`text-xs lg:text-sm ${isOutOfStock ? 'text-gray-400' : 'text-gray-500'}`}>
+                <span
+                  className={`text-xs lg:text-sm ${isOutOfStock ? 'text-gray-400' : 'text-gray-500'}`}
+                  style={isSweetshopTheme ? { color: appTheme.textSecondary } : undefined}
+                >
                   {unitLabel}
                 </span>
               ) : null}
             </div>
             {/* Price-container: Price display */}
             <div className="mt-1">
-              <span className="text-lg lg:text-2xl font-bold text-[#1B5E20] tracking-tight">
+              <span
+                className={`text-lg lg:text-2xl tracking-tight ${isSweetshopTheme ? 'font-semibold' : 'font-bold'}`}
+                style={isSweetshopTheme ? { color: appTheme.primary } : undefined}
+              >
                 ₹{currentPrice.toFixed(2)}
               </span>
             </div>
           </div>
           {hasVariants && quantity > 0 && effectiveSelectedVariant && (
-            <div className="text-xs text-gray-600 mt-1">
+            <div
+              className="text-xs text-gray-600 mt-1"
+              style={isSweetshopTheme ? { color: appTheme.textSecondary } : undefined}
+            >
               {quantity} × {effectiveSelectedVariant.variantName} = ₹{(currentPrice * quantity).toFixed(2)}
             </div>
           )}
@@ -343,10 +396,15 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock || (hasVariants && !isSelectedVariantAvailable)}
+                style={ctaVars}
                 className={`w-full px-4 py-3 lg:py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-sm ${
                   isOutOfStock || (hasVariants && !isSelectedVariantAvailable)
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-[#4CAF50] text-white hover:bg-[#2E7D32] shadow-md hover:shadow-lg active:scale-[0.98]'
+                    ? isSweetshopTheme
+                      ? 'bg-[var(--cta-bg-disabled)] text-white opacity-70 cursor-not-allowed'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : isSweetshopTheme
+                      ? 'bg-[var(--cta-bg)] text-white hover:bg-[var(--cta-bg-hover)] shadow-md hover:shadow-lg active:scale-[0.98]'
+                      : 'bg-[#4CAF50] text-white hover:bg-[#2E7D32] shadow-md hover:shadow-lg active:scale-[0.98]'
                 }`}
               >
                 <span>Add to Cart</span>
