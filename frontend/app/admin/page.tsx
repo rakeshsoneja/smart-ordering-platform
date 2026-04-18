@@ -38,7 +38,7 @@ export default function AdminPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-[#FFF7F3] flex items-center justify-center pt-14 pb-16 lg:pb-0">
+    <div className="min-h-screen bg-[var(--admin-soft-bg)] flex items-center justify-center pt-14 pb-16 lg:pb-0">
       {/* Desktop: Show loading/redirecting (will redirect quickly) */}
       <div className="hidden lg:block text-center">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>

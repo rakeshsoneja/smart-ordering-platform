@@ -44,6 +44,8 @@ function OrderDetailsContent() {
             itemTotal: o.itemTotal != null ? Number(o.itemTotal) : undefined,
             deliveryCharge: o.deliveryCharge != null ? Number(o.deliveryCharge) : undefined,
             totalWeightGrams: o.totalWeightGrams,
+            state_name: o.stateName ?? o.state_name,
+            state: o.state ?? '',
             payment_status: o.paymentMode ?? o.payment_mode ?? '',
             order_status: o.status ?? o.order_status ?? 'pending',
             payment_mode: o.paymentMode ?? o.payment_mode ?? '',

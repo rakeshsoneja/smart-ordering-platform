@@ -1,4 +1,4 @@
-const { getActiveDeliveryConfig } = require('../models/deliveryConfigModel');
+const { getEffectiveDeliveryConfig } = require('../models/deliveryConfigModel');
 const { getVariantById } = require('../models/variantModel');
 const { getProductById } = require('../models/productModel');
 
@@ -17,6 +17,7 @@ const calculateTotalWeight = async (cartItems) => {
   for (const item of cartItems) {
     let itemWeightGrams = 0
     let variantRow = null
+    let usedVariantRowWeight = false
 
     const variantIdNum =
       item.variantId != null && item.variantId !== ''
@@ -30,7 +31,10 @@ const calculateTotalWeight = async (cartItems) => {
         variantRow = await getVariantById(variantIdNum)
         if (variantRow != null && variantRow.variant_weight_grams != null) {
           const w = Number(variantRow.variant_weight_grams)
-          if (!Number.isNaN(w)) itemWeightGrams = w
+          if (!Number.isNaN(w)) {
+            itemWeightGrams = w
+            usedVariantRowWeight = true
+          }
         }
       } catch (error) {
         console.error(`Error fetching variant ${item.variantId}:`, error)
@@ -43,9 +47,10 @@ const calculateTotalWeight = async (cartItems) => {
       if (!Number.isNaN(w)) itemWeightGrams = w
     }
 
-    // Variant rows exist: never use legacy product/cart gms — products.unit_value is often the
-    // pre-variant pack (e.g. 500g) while the chosen variant is 250g, which doubled billing intermittently.
-    const skipLegacyProductGrams = variantRow != null
+    // Only skip legacy product gms when the variant row actually supplied a weight. If the row
+    // exists but variant_weight_grams is null, falling back avoids ₹0 delivery while still
+    // preventing the classic mismatch where product.unit_value is a different pack than the variant.
+    const skipLegacyProductGrams = usedVariantRowWeight
 
     if (
       !skipLegacyProductGrams &&
@@ -86,11 +91,12 @@ const calculateTotalWeight = async (cartItems) => {
 /**
  * Calculate delivery charge based on total weight and active delivery config
  * @param {number} totalWeightGrams - Total weight in grams
+ * @param {string|null} stateCode - Optional state code for state-based config lookup
  * @returns {Promise<{deliveryCharge: number, config: object|null}>} Delivery charge and config used
  */
-const calculateDeliveryCharge = async (totalWeightGrams) => {
-  // Get active delivery config
-  const config = await getActiveDeliveryConfig();
+const calculateDeliveryCharge = async (totalWeightGrams, stateCode = null) => {
+  // Get state-specific active config, fallback to active global config
+  const config = await getEffectiveDeliveryConfig(stateCode);
 
   // If no active config, return 0 delivery charge
   if (!config) {
@@ -131,6 +137,8 @@ const calculateDeliveryCharge = async (totalWeightGrams) => {
       configId: config.config_id,
       weightUnitGrams: config.weight_unit_grams,
       chargeAmount: config.charge_amount,
+      stateCode: config.state_code ?? null,
+      stateName: config.state_name ?? null,
     },
   };
 };
@@ -138,14 +146,15 @@ const calculateDeliveryCharge = async (totalWeightGrams) => {
 /**
  * Calculate delivery charge for cart items
  * @param {Array} cartItems - Array of cart items
+ * @param {string|null} stateCode - Optional state code
  * @returns {Promise<{totalWeightGrams: number, deliveryCharge: number, config: object|null}>}
  */
-const calculateDeliveryForCart = async (cartItems) => {
+const calculateDeliveryForCart = async (cartItems, stateCode = null) => {
   // Calculate total weight
   const totalWeightGrams = await calculateTotalWeight(cartItems);
 
   // Calculate delivery charge
-  const { deliveryCharge, config } = await calculateDeliveryCharge(totalWeightGrams);
+  const { deliveryCharge, config } = await calculateDeliveryCharge(totalWeightGrams, stateCode);
 
   return {
     totalWeightGrams,

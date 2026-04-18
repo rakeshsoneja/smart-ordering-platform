@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { X, Package, ShoppingBag, Truck } from 'lucide-react'
+import { getAppTheme } from '@/lib/theme'
 
 interface AdminHamburgerMenuProps {
   isOpen: boolean
@@ -17,6 +18,7 @@ export default function AdminHamburgerMenu({ isOpen, onClose }: AdminHamburgerMe
   const pathname = usePathname()
   const router = useRouter()
   const prevPathnameRef = useRef<string>(pathname)
+  const theme = getAppTheme()
 
   const isProductMaintenance = pathname === '/admin/product-maintenance'
   const isOrderMaintenance = pathname === '/admin/order-maintenance'
@@ -86,10 +88,13 @@ export default function AdminHamburgerMenu({ isOpen, onClose }: AdminHamburgerMe
           <button
             onClick={() => handleLinkClick('/admin/product-maintenance')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors touch-manipulation ${
-              isProductMaintenance
-                ? 'bg-[#FF6A3D]/10 text-[#FF6A3D] font-semibold'
-                : 'text-gray-700 hover:bg-gray-100'
+              isProductMaintenance ? 'font-semibold' : 'text-gray-700 hover:bg-gray-100'
             }`}
+            style={
+              isProductMaintenance
+                ? { backgroundColor: theme.primaryLight, color: theme.primary }
+                : undefined
+            }
           >
             <Package className="w-5 h-5 flex-shrink-0" />
             <span>Product Maintenance</span>
@@ -98,10 +103,13 @@ export default function AdminHamburgerMenu({ isOpen, onClose }: AdminHamburgerMe
           <button
             onClick={() => handleLinkClick('/admin/order-maintenance')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors touch-manipulation ${
-              isOrderMaintenance
-                ? 'bg-[#FF6A3D]/10 text-[#FF6A3D] font-semibold'
-                : 'text-gray-700 hover:bg-gray-100'
+              isOrderMaintenance ? 'font-semibold' : 'text-gray-700 hover:bg-gray-100'
             }`}
+            style={
+              isOrderMaintenance
+                ? { backgroundColor: theme.primaryLight, color: theme.primary }
+                : undefined
+            }
           >
             <ShoppingBag className="w-5 h-5 flex-shrink-0" />
             <span>Order Maintenance</span>
@@ -110,10 +118,13 @@ export default function AdminHamburgerMenu({ isOpen, onClose }: AdminHamburgerMe
           <button
             onClick={() => handleLinkClick('/admin/delivery-config')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors touch-manipulation ${
-              isDeliveryConfig
-                ? 'bg-[#FF6A3D]/10 text-[#FF6A3D] font-semibold'
-                : 'text-gray-700 hover:bg-gray-100'
+              isDeliveryConfig ? 'font-semibold' : 'text-gray-700 hover:bg-gray-100'
             }`}
+            style={
+              isDeliveryConfig
+                ? { backgroundColor: theme.primaryLight, color: theme.primary }
+                : undefined
+            }
           >
             <Truck className="w-5 h-5 flex-shrink-0" />
             <span>Delivery Config</span>

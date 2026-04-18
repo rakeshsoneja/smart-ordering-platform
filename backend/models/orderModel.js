@@ -53,8 +53,21 @@ const getOrderByRazorpayOrderId = async (razorpayOrderId) => {
 
 // Get orders by customer phone
 const getOrdersByCustomerPhone = async (phone) => {
-  const selectQuery = 'SELECT * FROM orders WHERE customer_phone = $1 ORDER BY created_at DESC';
-  const result = await query(selectQuery, [phone]);
+  const digitsOnly = (phone || '').replace(/\D/g, '');
+  const last10 = digitsOnly.slice(-10);
+  const exactQuery = 'SELECT * FROM orders WHERE customer_phone = $1 ORDER BY created_at DESC';
+  const exactResult = await query(exactQuery, [phone]);
+
+  const normalizedSelectQuery = `
+    SELECT *
+    FROM orders
+    WHERE RIGHT(REGEXP_REPLACE(customer_phone, '\\D', '', 'g'), 10) = $1
+    ORDER BY created_at DESC
+  `;
+  const normalizedResult = last10.length === 10
+    ? await query(normalizedSelectQuery, [last10])
+    : { rows: [] };
+  const result = last10.length === 10 ? normalizedResult : exactResult;
   return result.rows;
 };
 
@@ -71,6 +84,8 @@ const createOrder = async (orderData) => {
     status = 'pending',
     deliveryCharge = null,
     totalWeightGrams = null,
+    stateCode = null,
+    stateName = null,
   } = orderData;
 
   const insertQuery = `
@@ -84,9 +99,11 @@ const createOrder = async (orderData) => {
       razorpay_order_id,
       status,
       delivery_charge,
-      total_weight_grams
+      total_weight_grams,
+      state_code,
+      state_name
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     RETURNING *
   `;
 
@@ -101,6 +118,8 @@ const createOrder = async (orderData) => {
     status,
     deliveryCharge,
     totalWeightGrams,
+    stateCode,
+    stateName,
   ];
 
   const result = await query(insertQuery, values);

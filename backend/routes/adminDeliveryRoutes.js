@@ -7,6 +7,7 @@ const {
   updateDeliveryConfig,
   deleteDeliveryConfig,
   getActiveDeliveryConfig,
+  hasActiveStateConfig,
 } = require('../models/deliveryConfigModel');
 
 /**
@@ -28,6 +29,8 @@ router.get('/', async (req, res, next) => {
         weightUnitGrams: config.weight_unit_grams,
         chargeAmount: parseFloat(config.charge_amount),
         isActive: config.is_active,
+        stateCode: config.state_code,
+        stateName: config.state_name,
         createdAt: config.created_at,
         updatedAt: config.updated_at,
       })),
@@ -58,6 +61,8 @@ router.get('/active', async (req, res, next) => {
         weightUnitGrams: config.weight_unit_grams,
         chargeAmount: parseFloat(config.charge_amount),
         isActive: config.is_active,
+        stateCode: config.state_code,
+        stateName: config.state_name,
         createdAt: config.created_at,
         updatedAt: config.updated_at,
       },
@@ -96,6 +101,8 @@ router.get('/:id', async (req, res, next) => {
         weightUnitGrams: config.weight_unit_grams,
         chargeAmount: parseFloat(config.charge_amount),
         isActive: config.is_active,
+        stateCode: config.state_code,
+        stateName: config.state_name,
         createdAt: config.created_at,
         updatedAt: config.updated_at,
       },
@@ -111,7 +118,7 @@ router.get('/:id', async (req, res, next) => {
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { weightUnitGrams, chargeAmount, isActive } = req.body;
+    const { weightUnitGrams, chargeAmount, isActive, stateCode, stateName } = req.body;
 
     // Validation
     if (!weightUnitGrams || weightUnitGrams <= 0) {
@@ -128,10 +135,30 @@ router.post('/', async (req, res, next) => {
       });
     }
 
+    const normalizedStateCode =
+      typeof stateCode === 'string' && stateCode.trim() !== ''
+        ? stateCode.trim().toUpperCase()
+        : null;
+    const normalizedStateName =
+      typeof stateName === 'string' && stateName.trim() !== '' ? stateName.trim() : null;
+    const isActiveFlag = isActive === true || isActive === 'true';
+
+    if (isActiveFlag && normalizedStateCode) {
+      const exists = await hasActiveStateConfig(normalizedStateCode);
+      if (exists) {
+        return res.status(409).json({
+          success: false,
+          error: 'An active configuration already exists for this state',
+        });
+      }
+    }
+
     const configData = {
       weightUnitGrams: parseInt(weightUnitGrams),
       chargeAmount: parseFloat(chargeAmount),
-      isActive: isActive === true || isActive === 'true',
+      isActive: isActiveFlag,
+      stateCode: normalizedStateCode,
+      stateName: normalizedStateName,
     };
 
     const config = await createDeliveryConfig(configData);
@@ -144,6 +171,8 @@ router.post('/', async (req, res, next) => {
         weightUnitGrams: config.weight_unit_grams,
         chargeAmount: parseFloat(config.charge_amount),
         isActive: config.is_active,
+        stateCode: config.state_code,
+        stateName: config.state_name,
         createdAt: config.created_at,
         updatedAt: config.updated_at,
       },
@@ -167,7 +196,20 @@ router.put('/:id', async (req, res, next) => {
       });
     }
 
-    const { weightUnitGrams, chargeAmount, isActive } = req.body;
+    const { weightUnitGrams, chargeAmount, isActive, stateCode, stateName } = req.body;
+    const normalizedStateCode =
+      stateCode !== undefined && typeof stateCode === 'string' && stateCode.trim() !== ''
+        ? stateCode.trim().toUpperCase()
+        : stateCode === '' || stateCode === null
+          ? null
+          : undefined;
+    const normalizedStateName =
+      stateName !== undefined && typeof stateName === 'string' && stateName.trim() !== ''
+        ? stateName.trim()
+        : stateName === '' || stateName === null
+          ? null
+          : undefined;
+
 
     // Check if config exists
     const existingConfig = await getDeliveryConfigById(configId);
@@ -202,6 +244,28 @@ router.put('/:id', async (req, res, next) => {
     if (isActive !== undefined) {
       configData.isActive = isActive === true || isActive === 'true';
     }
+    if (normalizedStateCode !== undefined) {
+      configData.stateCode = normalizedStateCode;
+    }
+    if (normalizedStateName !== undefined) {
+      configData.stateName = normalizedStateName;
+    }
+
+    const nextStateCode =
+      configData.stateCode !== undefined
+        ? configData.stateCode
+        : existingConfig.state_code;
+    const nextIsActive =
+      configData.isActive !== undefined ? configData.isActive : existingConfig.is_active;
+    if (nextIsActive && nextStateCode) {
+      const exists = await hasActiveStateConfig(nextStateCode, configId);
+      if (exists) {
+        return res.status(409).json({
+          success: false,
+          error: 'An active configuration already exists for this state',
+        });
+      }
+    }
 
     const config = await updateDeliveryConfig(configId, configData);
 
@@ -220,6 +284,8 @@ router.put('/:id', async (req, res, next) => {
         weightUnitGrams: config.weight_unit_grams,
         chargeAmount: parseFloat(config.charge_amount),
         isActive: config.is_active,
+        stateCode: config.state_code,
+        stateName: config.state_name,
         createdAt: config.created_at,
         updatedAt: config.updated_at,
       },

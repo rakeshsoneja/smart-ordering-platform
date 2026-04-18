@@ -31,14 +31,26 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
       cartItems,
       amount, // This is the item total from frontend
       paymentMode,
+      stateCode,
+      stateName,
     } = req.body;
+
+    const normalizedStateCode =
+      typeof stateCode === 'string' && stateCode.trim() !== ''
+        ? stateCode.trim().toUpperCase()
+        : null;
+    const normalizedStateName =
+      typeof stateName === 'string' && stateName.trim() !== '' ? stateName.trim() : null;
 
     // Normalize phone to E.164 (+countryCode+digits) for SMS and WhatsApp; same value works for both
     const normalizedPhone = normalizePhone(customerPhone);
     if (normalizedPhone) customerPhone = normalizedPhone;
 
     // Calculate delivery charge and total weight
-    const { totalWeightGrams, deliveryCharge } = await calculateDeliveryForCart(cartItems);
+    const { totalWeightGrams, deliveryCharge } = await calculateDeliveryForCart(
+      cartItems,
+      normalizedStateCode
+    );
 
     // Calculate final order total: item total + delivery charge
     const itemTotal = parseFloat(amount) || 0;
@@ -101,6 +113,8 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
       status: orderStatus,
       deliveryCharge,
       totalWeightGrams,
+      stateCode: normalizedStateCode,
+      stateName: normalizedStateName,
     };
 
     const order = await createOrder(orderData);
@@ -141,6 +155,8 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
         deliveryCharge: deliveryCharge,
         totalWeightGrams: totalWeightGrams,
         paymentMode: order.payment_mode,
+        stateCode: order.state_code,
+        stateName: order.state_name,
         status: order.status,
         razorpayOrderId: order.razorpay_order_id,
         createdAt: order.created_at,
@@ -268,7 +284,11 @@ router.post('/verify-payment', validateRequest(paymentVerificationRules), async 
  */
 router.post('/calculate-delivery', async (req, res, next) => {
   try {
-    const { cartItems } = req.body;
+    const { cartItems, stateCode } = req.body;
+    const normalizedStateCode =
+      typeof stateCode === 'string' && stateCode.trim() !== ''
+        ? stateCode.trim().toUpperCase()
+        : null;
 
     if (!cartItems || !Array.isArray(cartItems)) {
       return res.status(400).json({
@@ -278,7 +298,10 @@ router.post('/calculate-delivery', async (req, res, next) => {
     }
 
     // Calculate delivery charge and total weight
-    const { totalWeightGrams, deliveryCharge } = await calculateDeliveryForCart(cartItems);
+    const { totalWeightGrams, deliveryCharge, config } = await calculateDeliveryForCart(
+      cartItems,
+      normalizedStateCode
+    );
 
     // Calculate item total from cart items
     const itemTotal = cartItems.reduce((sum, item) => {
@@ -295,6 +318,7 @@ router.post('/calculate-delivery', async (req, res, next) => {
       itemTotal: Math.round(itemTotal * 100) / 100,
       totalWeightGrams,
       deliveryCharge,
+      appliedStateCode: config?.stateCode ?? null,
       orderTotal: Math.round(orderTotal * 100) / 100,
     });
   } catch (error) {
@@ -317,7 +341,9 @@ router.get('/search', async (req, res, next) => {
       });
     }
 
-    const orders = await getOrdersByCustomerPhone(phone.trim());
+    const trimmedPhone = phone.trim();
+
+    const orders = await getOrdersByCustomerPhone(trimmedPhone);
 
     res.json({
       success: true,
@@ -335,6 +361,8 @@ router.get('/search', async (req, res, next) => {
           itemTotal: isNaN(itemTotal) ? 0 : itemTotal,
           deliveryCharge: isNaN(deliveryCharge) ? 0 : deliveryCharge,
           totalWeightGrams: order.total_weight_grams,
+          stateCode: order.state_code,
+          stateName: order.state_name,
           paymentMode: order.payment_mode,
           status: order.status,
           razorpayOrderId: order.razorpay_order_id,
@@ -388,6 +416,8 @@ router.get('/:orderId', async (req, res, next) => {
         itemTotal: isNaN(itemTotal) ? 0 : itemTotal,
         deliveryCharge: isNaN(deliveryCharge) ? 0 : deliveryCharge,
         totalWeightGrams: order.total_weight_grams,
+        stateCode: order.state_code,
+        stateName: order.state_name,
         paymentMode: order.payment_mode,
         status: order.status,
         razorpayOrderId: order.razorpay_order_id,

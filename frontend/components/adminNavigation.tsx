@@ -19,7 +19,7 @@ export default function AdminNavigation() {
             href="/admin/product-maintenance"
             className={`flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 text-sm sm:text-base font-medium transition-colors whitespace-nowrap border-b-2 ${
               isProductMaintenance
-                ? 'border-[#FF6A3D] text-[#FF6A3D]'
+                ? 'border-[color:var(--admin-primary)] text-[color:var(--admin-primary)]'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
             }`}
           >
@@ -30,7 +30,7 @@ export default function AdminNavigation() {
             href="/admin/order-maintenance"
             className={`flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 text-sm sm:text-base font-medium transition-colors whitespace-nowrap border-b-2 ${
               isOrderMaintenance
-                ? 'border-[#FF6A3D] text-[#FF6A3D]'
+                ? 'border-[color:var(--admin-primary)] text-[color:var(--admin-primary)]'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
             }`}
           >
@@ -41,7 +41,7 @@ export default function AdminNavigation() {
             href="/admin/delivery-config"
             className={`flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 text-sm sm:text-base font-medium transition-colors whitespace-nowrap border-b-2 ${
               isDeliveryConfig
-                ? 'border-[#FF6A3D] text-[#FF6A3D]'
+                ? 'border-[color:var(--admin-primary)] text-[color:var(--admin-primary)]'
                 : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
             }`}
           >

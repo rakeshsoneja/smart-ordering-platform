@@ -246,7 +246,7 @@ export default function OrderMaintenancePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#FFF7F3] pt-14 pb-16 lg:pb-0 no-print">
+      <div className="min-h-screen bg-[var(--admin-soft-bg)] pt-14 pb-16 lg:pb-0 no-print">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 max-w-7xl">
         {/* Header */}
         <div className="mb-6">
@@ -546,7 +546,7 @@ export default function OrderMaintenancePage() {
                             }
                           }}
                           disabled={updatingStatus || getAvailableStatuses(selectedOrder.order_status).length === 0}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                         >
                           <option value={selectedOrder.order_status}>
                             {ORDER_STATUSES.find(s => s.value === selectedOrder.order_status)?.label || selectedOrder.order_status} (Current)
@@ -586,14 +586,6 @@ export default function OrderMaintenancePage() {
           </div>
         )}
 
-        {/* Print Receipt - Always rendered, hidden on screen, visible when printing */}
-        {selectedOrder && (
-          <PrintReceipt 
-            order={selectedOrder} 
-            className={showPrintReceipt ? 'print-receipt-visible' : ''}
-          />
-        )}
-
         {/* Status Update Confirmation Modal */}
         {statusUpdateConfirm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -627,7 +619,7 @@ export default function OrderMaintenancePage() {
                     handleStatusUpdate(statusUpdateConfirm.orderId, statusUpdateConfirm.newStatus)
                   }}
                   disabled={updatingStatus}
-                  className="flex-1 px-4 py-2 bg-[#FF6A3D] text-white rounded-lg hover:bg-[#FF5A2D] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 bg-[var(--admin-primary)] text-white rounded-lg hover:bg-[var(--admin-primary-hover)] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {updatingStatus ? (
                     <>
@@ -644,6 +636,14 @@ export default function OrderMaintenancePage() {
         )}
       </div>
     </div>
+
+    {/* Print receipt lives outside .no-print so @media print can omit admin UI entirely */}
+    {selectedOrder && (
+      <PrintReceipt
+        order={selectedOrder}
+        className={showPrintReceipt ? 'print-receipt-visible' : ''}
+      />
+    )}
     </>
   )
 }

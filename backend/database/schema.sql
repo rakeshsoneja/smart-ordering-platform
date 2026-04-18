@@ -133,7 +133,18 @@ CREATE TRIGGER update_delivery_config_updated_at BEFORE UPDATE ON delivery_confi
 -- These columns are nullable to maintain backward compatibility with existing orders
 ALTER TABLE orders 
 ADD COLUMN IF NOT EXISTS delivery_charge DECIMAL(10, 2),
-ADD COLUMN IF NOT EXISTS total_weight_grams INTEGER;
+ADD COLUMN IF NOT EXISTS total_weight_grams INTEGER,
+ADD COLUMN IF NOT EXISTS state_code VARCHAR(5),
+ADD COLUMN IF NOT EXISTS state_name VARCHAR(50);
+
+-- Add nullable state fields for state-based override configs (global rows remain NULL state_code)
+ALTER TABLE delivery_config
+ADD COLUMN IF NOT EXISTS state_code VARCHAR(5),
+ADD COLUMN IF NOT EXISTS state_name VARCHAR(50);
+
+-- Indexes for state-based active config lookup and order reporting
+CREATE INDEX IF NOT EXISTS idx_delivery_config_state_active ON delivery_config(state_code, is_active);
+CREATE INDEX IF NOT EXISTS idx_orders_state_code ON orders(state_code);
 
 
 

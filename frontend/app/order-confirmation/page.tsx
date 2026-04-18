@@ -5,10 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import axiosInstance from '@/lib/axiosConfig'
 import { appConfig } from '@/lib/config'
 import { getAppTheme } from '@/lib/theme'
-import {
-  formatDeliveryAddressForDisplay,
-  parseStoredDeliveryAddress,
-} from '@/lib/deliveryAddressFormat'
+import ReceiptDeliveryAddressBlock from '@/components/ReceiptDeliveryAddressBlock'
+import { resolveDisplayState } from '@/lib/deliveryAddressFormat'
 
 function OrderConfirmationContent() {
   const searchParams = useSearchParams()
@@ -98,9 +96,7 @@ function OrderConfirmationContent() {
   const deliveryCharge = order.deliveryCharge != null ? parseFloat(order.deliveryCharge) : 0
   const totalAmount = order.amount != null ? parseFloat(order.amount) : (itemTotal + deliveryCharge)
   
-  const deliveryAddressDisplay = formatDeliveryAddressForDisplay(
-    parseStoredDeliveryAddress(order.deliveryAddress ?? '')
-  )
+  const displayState = resolveDisplayState(order.stateName, order.deliveryAddress, order.state)
 
   const paymentModeText = order.paymentMode === 'razorpay' ? 'UPI / Card' : 'Cash on Delivery'
   const statusText = order.status === 'paid' ? 'Confirmed' : 
@@ -159,15 +155,16 @@ function OrderConfirmationContent() {
             </div>
           </div>
 
-          {/* Delivery Details */}
+          {/* Delivery Details — receipt-style block */}
           <div className="mb-4 sm:mb-6">
             <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Delivery Details</h2>
-            <div className="space-y-2 text-sm sm:text-base text-gray-700">
-              <p><span className="font-medium">Name:</span> {order.customerName}</p>
-              <p><span className="font-medium">Phone:</span> {order.customerPhone}</p>
-              <p><span className="font-medium">Address:</span></p>
-              <p className="pl-2 sm:pl-4 break-words whitespace-pre-line">{deliveryAddressDisplay}</p>
-            </div>
+            <ReceiptDeliveryAddressBlock
+              customerName={order.customerName}
+              customerPhone={order.customerPhone}
+              rawDeliveryAddress={order.deliveryAddress ?? ''}
+              stateDisplay={displayState}
+              className="text-gray-800"
+            />
           </div>
 
           {/* SMS Notification */}

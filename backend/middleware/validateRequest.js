@@ -69,6 +69,20 @@ const orderValidationRules = [
   body('paymentMode')
     .isIn(['razorpay', 'cod'])
     .withMessage('Payment mode must be either "razorpay" or "cod"'),
+
+  body('stateCode')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('State code must be a string')
+    .matches(/^[A-Za-z]{2,5}$/)
+    .withMessage('State code must be 2 to 5 alphabetic characters'),
+
+  body('stateName')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('State name must be a string')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('State name must be between 2 and 50 characters'),
 ];
 
 const paymentVerificationRules = [

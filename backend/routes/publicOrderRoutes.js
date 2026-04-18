@@ -80,6 +80,8 @@ router.get('/order/:token', async (req, res, next) => {
         itemTotal: isNaN(itemTotal) ? 0 : itemTotal,
         deliveryCharge: isNaN(deliveryCharge) ? 0 : deliveryCharge,
         totalWeightGrams: order.total_weight_grams,
+        stateCode: order.state_code,
+        stateName: order.state_name,
         paymentMode: order.payment_mode,
         status: order.status,
         createdAt: order.created_at,

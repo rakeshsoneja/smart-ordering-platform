@@ -3,18 +3,16 @@
 import { useState, useEffect, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/cartContext'
-import axiosInstance from '@/lib/axiosConfig'
-import { appConfig } from '@/lib/config'
 import { buildStoredDeliveryAddress } from '@/lib/deliveryAddressFormat'
 import { getAppTheme } from '@/lib/theme'
+import { indianStates, getStateByCode } from '@/constants/states'
+import { SearchableSelect } from '@/components/SearchableSelect'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { cartItems, clearCart, getTotalAmount } = useCart()
-  const [loading, setLoading] = useState(false)
+  const { cartItems, getTotalAmount } = useCart()
   const [paymentMode, setPaymentMode] = useState<'razorpay' | 'cod'>('cod')
-  const [deliveryCharge, setDeliveryCharge] = useState(0)
-  const [deliveryLoading, setDeliveryLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -39,49 +37,7 @@ export default function CheckoutPage() {
 
   const itemTotal = getTotalAmount()
 
-  // Calculate delivery charge when cart items change
-  useEffect(() => {
-    const calculateDelivery = async () => {
-      if (cartItems.length === 0) {
-        setDeliveryCharge(0)
-        return
-      }
-
-      try {
-        setDeliveryLoading(true)
-        const cartItemsForBackend = cartItems.map(item => ({
-          id: item.id,
-          productId: item.id,
-          variantId: item.variantId || null,
-          variantWeightGrams: item.variantWeightGrams || null,
-          unit: item.unit ?? null,
-          unitValue: item.unitValue ?? null,
-          quantity: item.quantity,
-          price: item.price,
-        }))
-
-        const response = await axiosInstance.post('/api/orders/calculate-delivery', {
-          cartItems: cartItemsForBackend,
-        })
-
-        if (response.data.success) {
-          setDeliveryCharge(response.data.deliveryCharge || 0)
-        }
-      } catch (error) {
-        console.error('Error calculating delivery charge:', error)
-        // If calculation fails, set delivery charge to 0
-        setDeliveryCharge(0)
-      } finally {
-        setDeliveryLoading(false)
-      }
-    }
-
-    calculateDelivery()
-  }, [cartItems])
-
-  const orderTotal = itemTotal + deliveryCharge
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     // Clear error when user starts typing
@@ -129,10 +85,9 @@ export default function CheckoutPage() {
       newErrors.pincode = 'Enter a valid 6-digit Indian PIN code'
     }
 
-    if (!formData.state.trim()) {
+    const selectedState = getStateByCode(formData.state)
+    if (!selectedState) {
       newErrors.state = 'State is required'
-    } else if (formData.state.trim().length < 2) {
-      newErrors.state = 'State must be at least 2 characters'
     }
 
     if (
@@ -142,11 +97,12 @@ export default function CheckoutPage() {
       !newErrors.state &&
       formData.deliveryAddress.trim().length >= 10
     ) {
+      const selectedStateForAddress = getStateByCode(formData.state)
       const deliveryAddressFull = buildStoredDeliveryAddress(
         formData.deliveryAddress.trim(),
         formData.city.trim(),
         formData.pincode.trim(),
-        formData.state.trim()
+        selectedStateForAddress?.name ?? ''
       )
       if (deliveryAddressFull.length > 500) {
         newErrors.deliveryAddress =
@@ -156,83 +112,6 @@ export default function CheckoutPage() {
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }
-
-  const handleRazorpayPayment = async (orderData: any) => {
-    try {
-      // Load Razorpay script dynamically
-      const script = document.createElement('script')
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-      script.onload = () => {
-        const Razorpay = (window as any).Razorpay
-        const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
-
-        if (!razorpayKeyId) {
-          alert('Razorpay key not configured. Please contact support.')
-          return
-        }
-
-        // Get final order total from response (includes delivery charge)
-        const finalOrderTotal = orderData.amount || orderTotal
-
-        const options = {
-          key: razorpayKeyId,
-          amount: orderData.razorpayOrderId ? finalOrderTotal * 100 : 0, // Amount in paise
-          currency: 'INR',
-          name: appConfig.shopName,
-          description: 'Order Payment',
-          order_id: orderData.razorpayOrderId,
-          handler: async function (response: any) {
-            // Verify payment on backend
-            try {
-              const verifyResponse = await axiosInstance.post(
-                '/api/orders/verify-payment',
-                {
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                }
-              )
-
-              if (verifyResponse.data.success) {
-                clearCart()
-                // Use order ID from verify response (which has the updated order)
-                const orderId = verifyResponse.data.order.id || orderData.id
-                router.push(`/order-confirmation?orderId=${orderId}&status=paid`)
-              } else {
-                alert('Payment verification failed. Please contact support.')
-              }
-            } catch (error: any) {
-              console.error('Payment verification error:', error)
-              alert('Payment verification failed. Please contact support with your payment ID.')
-            }
-          },
-          prefill: {
-            name: `${formData.firstName} ${formData.lastName}`,
-            contact: formData.customerPhone,
-            ...(formData.email.trim() ? { email: formData.email.trim() } : {}),
-          },
-          theme: {
-            color: appTheme.primary,
-          },
-          modal: {
-            ondismiss: function() {
-              console.log('Payment cancelled by user')
-            },
-          },
-        }
-
-        const razorpay = new Razorpay(options)
-        razorpay.open()
-      }
-      script.onerror = () => {
-        alert('Failed to load Razorpay. Please check your internet connection.')
-      }
-      document.body.appendChild(script)
-    } catch (error) {
-      console.error('Razorpay initialization error:', error)
-      alert('Failed to initialize payment. Please try again.')
-    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -247,85 +126,36 @@ export default function CheckoutPage() {
       return
     }
 
-    setLoading(true)
-
     try {
-      // Prepare cart items for backend
-      const cartItemsForBackend = cartItems.map(item => ({
-        id: item.id, // Product ID
-        productId: item.id, // Product ID (for inventory deduction)
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit || null, // Legacy field
-        unitValue: item.unitValue || null, // Legacy field
-        variantId: item.variantId || null, // NEW: variant ID if using variants
-        variantName: item.variantName || null, // NEW: variant name
-        variantWeightGrams: item.variantWeightGrams ?? null, // must match calculate-delivery payload for weight
-        price: item.price,
-        totalPrice: item.price * item.quantity,
-      }))
-
+      setLoading(true)
+      const selectedState = getStateByCode(formData.state)
       const deliveryAddressFull = buildStoredDeliveryAddress(
         formData.deliveryAddress.trim(),
         formData.city.trim(),
         formData.pincode.trim(),
-        formData.state.trim()
+        selectedState?.name ?? ''
       )
-
-      // Create order (amount should be item total, backend will add delivery charge)
-      const response = await axiosInstance.post('/api/orders', {
-        customerName: `${formData.firstName} ${formData.lastName}`,
-        customerPhone: formData.customerPhone,
-        deliveryAddress: deliveryAddressFull,
-        cartItems: cartItemsForBackend,
-        amount: itemTotal, // Item total only, backend calculates delivery charge
+      const reviewPayload = {
+        cartItems,
+        deliveryDetails: {
+          customerName: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
+          customerPhone: formData.customerPhone.trim(),
+          email: formData.email.trim(),
+          deliveryAddress: deliveryAddressFull,
+          city: formData.city.trim(),
+          pincode: formData.pincode.trim(),
+          stateCode: selectedState?.code ?? null,
+          stateName: selectedState?.name ?? null,
+        },
         paymentMode: paymentMode,
-      })
-
-      if (response.data.success) {
-        const orderData = response.data.order
-
-        if (paymentMode === 'razorpay' && orderData.razorpayOrderId) {
-          // Handle Razorpay payment
-          await handleRazorpayPayment(orderData)
-        } else if (paymentMode === 'cod') {
-          // COD order - redirect to confirmation
-          clearCart()
-          router.push(`/order-confirmation?orderId=${orderData.id}&status=cod`)
-        }
-      } else {
-        alert('Failed to create order. Please try again.')
       }
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('orderReviewData', JSON.stringify(reviewPayload))
+      }
+      router.push('/order-review')
     } catch (error: any) {
-      console.error('Order creation error:', error)
-      
-      // Provide more specific error messages
-      let errorMessage = 'Failed to create order. Please try again.'
-      
-      if (error.response) {
-        // Server responded with error
-        const { status, data } = error.response
-        
-        if (status === 400 && data.errors) {
-          // Validation errors
-          const validationErrors = data.errors.map((err: any) => err.msg).join(', ')
-          errorMessage = `Validation Error: ${validationErrors}`
-        } else if (data.error) {
-          errorMessage = data.error
-        } else if (status === 500) {
-          errorMessage = 'Server error. Please try again later or contact support.'
-        } else if (status === 404) {
-          errorMessage = 'API endpoint not found. Please check your connection.'
-        }
-      } else if (error.request) {
-        // Request was made but no response received (network error)
-        errorMessage = 'Network error. Please check your internet connection and ensure the backend server is running. If testing on mobile, make sure you\'re using the correct IP address (not localhost).'
-      } else {
-        // Something else happened
-        errorMessage = error.message || 'An unexpected error occurred. Please try again.'
-      }
-      
-      alert(errorMessage)
+      console.error('Failed to prepare review step:', error)
+      alert('Unable to open order review. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -416,7 +246,7 @@ export default function CheckoutPage() {
                     name="customerPhone"
                     value={formData.customerPhone}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                    className={`w-full px-3 py-2.5 border rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       errors.customerPhone ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="WhatsApp number"
@@ -436,7 +266,7 @@ export default function CheckoutPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                    className={`w-full px-3 py-2.5 border rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       errors.email ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="your@email.com"
@@ -512,20 +342,23 @@ export default function CheckoutPage() {
                   )}
                 </div>
                 <div>
-                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1.5">
-                    State *
-                  </label>
-                  <input
-                    type="text"
+                  <SearchableSelect
+                    label="State *"
                     id="state"
                     name="state"
                     autoComplete="address-level1"
+                    options={indianStates}
                     value={formData.state}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                      errors.state ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="State"
+                    onChange={(code) => {
+                      setFormData((prev) => ({ ...prev, state: code }))
+                      if (errors.state) {
+                        setErrors((prev) => ({ ...prev, state: '' }))
+                      }
+                    }}
+                    placeholder="Select State"
+                    getOptionValue={(s) => s.code}
+                    getOptionLabel={(s) => s.name}
+                    error={!!errors.state}
                   />
                   {errors.state && (
                     <p className="text-red-500 text-xs mt-0.5">{errors.state}</p>
@@ -533,7 +366,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Confirm — same primary style as Add to Cart */}
+              {/* Review Order */}
               <button
                 type="submit"
                 disabled={loading}
@@ -550,11 +383,11 @@ export default function CheckoutPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Processing...</span>
+                    <span>Preparing review...</span>
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    <span>Confirm</span>
+                    <span>Review Order</span>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
@@ -566,9 +399,7 @@ export default function CheckoutPage() {
 
           {/* Column 2: Order Summary Section - Right on Desktop/Tablet, First on Mobile */}
           <div className="order-1 md:order-2 md:pl-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
-              Order Summary
-            </h2>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Order Summary</h2>
             <div className="space-y-1.5 mb-2">
               {cartItems.map((item, index) => {
                 const price = Number(item?.price) || 0
@@ -601,29 +432,14 @@ export default function CheckoutPage() {
             </div>
             <div className="pt-2 space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-base sm:text-lg text-gray-700">Item Total:</span>
+                <span className="text-base sm:text-lg text-gray-700">Subtotal:</span>
                 <span className="text-base sm:text-lg text-gray-800 font-semibold">
                   ₹ {itemTotal.toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-base sm:text-lg text-gray-700">Delivery Charge:</span>
-                <span className="text-base sm:text-lg text-gray-800 font-semibold">
-                  {deliveryLoading ? (
-                    <span className="text-gray-500">Calculating...</span>
-                  ) : (
-                    `₹ ${deliveryCharge.toFixed(2)}`
-                  )}
-                </span>
-              </div>
-              <div className="border-t-2 border-gray-300 pt-2 mt-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg sm:text-xl font-bold text-gray-800">Order Total:</span>
-                  <span className="text-lg sm:text-xl font-bold text-gray-800">
-                    ₹ {orderTotal.toFixed(2)}
-                  </span>
-                </div>
-              </div>
+              <p className="text-sm text-gray-600 pt-2 border-t border-gray-200">
+                Delivery charge and final total will be calculated in the next review step based on selected state.
+              </p>
             </div>
           </div>
         </div>

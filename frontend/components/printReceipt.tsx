@@ -4,6 +4,7 @@ import { appConfig, formatReceiptCityPinStateLine } from '@/lib/config'
 import {
   formatDeliveryAddressForDisplay,
   parseStoredDeliveryAddress,
+  resolveDisplayState,
 } from '@/lib/deliveryAddressFormat'
 
 export interface PrintReceiptOrderItem {
@@ -23,6 +24,8 @@ export interface PrintReceiptOrder {
   customer_name: string
   customer_phone: string
   delivery_address: string
+  state_name?: string
+  state?: string
   items: PrintReceiptOrderItem[]
   total_amount: number
   itemTotal?: number
@@ -45,6 +48,7 @@ export default function PrintReceipt({ order, className = '' }: PrintReceiptProp
   const customerDeliveryDisplay = formatDeliveryAddressForDisplay(
     parseStoredDeliveryAddress(order.delivery_address)
   )
+  const customerState = resolveDisplayState(order.state_name, order.delivery_address, order.state)
 
   // Format date to dd/mm/yyyy
   const formatDate = (dateString?: string): string => {
@@ -84,6 +88,7 @@ export default function PrintReceipt({ order, className = '' }: PrintReceiptProp
           <div className="text-sm text-gray-900 space-y-1">
             <p className="font-semibold">{order.customer_name}</p>
             <div className="break-words whitespace-pre-line">{customerDeliveryDisplay}</div>
+            <p>State: {customerState}</p>
             <p className="mt-2">Phone: {order.customer_phone}</p>
           </div>
         </div>

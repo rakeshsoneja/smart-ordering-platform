@@ -668,7 +668,7 @@ export default function ProductMaintenancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFF7F3] pt-14 pb-16 lg:pb-0">
+    <div className="min-h-screen bg-[var(--admin-soft-bg)] pt-14 pb-16 lg:pb-0">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 max-w-7xl">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -678,7 +678,7 @@ export default function ProductMaintenancePage() {
           </div>
           <button
             onClick={handleAddProduct}
-            className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-[#FF6A3D] to-[#FF3D68] text-white rounded-lg hover:shadow-xl hover:shadow-[#FF6A3D]/30 transition-all font-semibold text-sm sm:text-base"
+            className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-[var(--admin-grad-from)] to-[var(--admin-grad-to)] text-white rounded-lg hover:shadow-xl transition-all font-semibold text-sm sm:text-base"
           >
             <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Add Product</span>
@@ -774,28 +774,88 @@ export default function ProductMaintenancePage() {
               </div>
             </div>
 
-            {/* Tablet/Mobile Card View */}
-            <div className="lg:hidden space-y-4">
+            {/* Mobile card view */}
+            <div className="sm:hidden space-y-4">
+              {products.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+                  <p className="text-gray-500 text-sm">No products found. Click "Add Product" to get started.</p>
+                </div>
+              ) : (
+                products.map((product) => (
+                  <div key={product.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="relative flex-shrink-0">
+                        {renderProductImage(product.image, 'small')}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-semibold text-gray-900 mb-1">{product.name}</h3>
+                        <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Price</p>
+                        <p className="text-sm font-semibold text-gray-900">₹{product.price}</p>
+                        <p className="text-xs text-gray-500">
+                          {product.unit === 'pc' ? `per ${product.unitValue} piece${product.unitValue > 1 ? 's' : ''}` : `per ${product.unitValue}g`}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Category</p>
+                        <p className="text-sm font-semibold text-gray-900 capitalize">{product.category}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-500 mb-1">Status</p>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(product.status)}`}>
+                          {product.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => handleEditProduct(product)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm"
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(product.id)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Tablet card view (highlight-style) */}
+            <div className="hidden sm:block lg:hidden space-y-4">
               {products.length === 0 ? (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
                   <p className="text-gray-500">No products found. Click "Add Product" to get started.</p>
                 </div>
               ) : (
                 products.map((product) => (
-                  <div key={product.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+                  <div key={product.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-start gap-3 flex-1">
                         <div className="relative flex-shrink-0">
                           {renderProductImage(product.image, 'large')}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">{product.name}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">{product.name}</h3>
                           <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+
+                    <div className="grid grid-cols-3 gap-4 mb-4">
                       <div>
                         <p className="text-xs text-gray-500 mb-1">Price</p>
                         <p className="text-sm font-semibold text-gray-900">₹{product.price}</p>
@@ -913,7 +973,7 @@ export default function ProductMaintenancePage() {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent ${
                           formErrors.name ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="e.g., Gulab Jamun"
@@ -933,7 +993,7 @@ export default function ProductMaintenancePage() {
                         value={formData.description}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent resize-none"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent resize-none"
                         placeholder="Product description"
                       />
                     </div>
@@ -954,7 +1014,7 @@ export default function ProductMaintenancePage() {
                               onChange={handleInputChange}
                               step="0.01"
                               min="0"
-                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent ${
                                 formErrors.price ? 'border-red-500' : 'border-gray-300'
                               }`}
                               placeholder="250"
@@ -973,7 +1033,7 @@ export default function ProductMaintenancePage() {
                               name="unit"
                               value={formData.unit}
                               onChange={handleInputChange}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent"
                             >
                               <option value="pc">Piece</option>
                               <option value="gms">Grams</option>
@@ -992,7 +1052,7 @@ export default function ProductMaintenancePage() {
                             value={formData.unitValue}
                             onChange={handleInputChange}
                             min="1"
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent ${
                               formErrors.unitValue ? 'border-red-500' : 'border-gray-300'
                             }`}
                             placeholder="1"
@@ -1131,7 +1191,7 @@ export default function ProductMaintenancePage() {
                                     requestAnimationFrame(() => e.target.select())
                                   }}
                                   onBlur={(e) => commitVariantNameBlur(e.target.value)}
-                                  className={`w-full min-w-0 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                                  className={`w-full min-w-0 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent ${
                                     formErrors[`variant_name_${index}`] ? 'border-red-500' : 'border-gray-300'
                                   }`}
                                   placeholder="250g"
@@ -1163,7 +1223,7 @@ export default function ProductMaintenancePage() {
                                     requestAnimationFrame(() => e.target.select())
                                   }}
                                   onBlur={(e) => commitVariantWeightBlur(e.target.value)}
-                                  className="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
+                                  className="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent"
                                   placeholder="250"
                                 />
                                 </div>
@@ -1190,7 +1250,7 @@ export default function ProductMaintenancePage() {
                                     requestAnimationFrame(() => e.target.select())
                                   }}
                                   onBlur={(e) => commitVariantPriceBlur(e.target.value)}
-                                  className={`w-full min-w-0 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent ${
+                                  className={`w-full min-w-0 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent ${
                                     formErrors[`variant_price_${index}`] ? 'border-red-500' : 'border-gray-300'
                                   }`}
                                   placeholder="250.00"
@@ -1208,7 +1268,7 @@ export default function ProductMaintenancePage() {
                                   type="checkbox"
                                   checked={variant.isDefaultVariant}
                                   onChange={(e) => handleVariantChange(index, 'isDefaultVariant', e.target.checked)}
-                                  className="rounded border-gray-300 text-[#FF6A3D] focus:ring-[#FF6A3D]"
+                                  className="rounded border-gray-300 text-[color:var(--admin-primary)] focus:ring-[color:var(--admin-primary)]"
                                 />
                                 <span>Default Variant</span>
                               </label>
@@ -1217,7 +1277,7 @@ export default function ProductMaintenancePage() {
                                   type="checkbox"
                                   checked={variant.isActive}
                                   onChange={(e) => handleVariantChange(index, 'isActive', e.target.checked)}
-                                  className="rounded border-gray-300 text-[#FF6A3D] focus:ring-[#FF6A3D]"
+                                  className="rounded border-gray-300 text-[color:var(--admin-primary)] focus:ring-[color:var(--admin-primary)]"
                                 />
                                 <span>Active</span>
                               </label>
@@ -1274,7 +1334,7 @@ export default function ProductMaintenancePage() {
                                     setLocalInventoryValue(null)
                                   }}
                                   disabled={inventoryLoading}
-                                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent disabled:opacity-50"
+                                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent disabled:opacity-50"
                                   placeholder="0"
                                 />
                                 {inventoryQtyFocused && (
@@ -1321,7 +1381,7 @@ export default function ProductMaintenancePage() {
                           name="category"
                           value={formData.category}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent"
                         >
                           <option value="sweet">Sweet</option>
                           <option value="savory">Savory</option>
@@ -1340,7 +1400,7 @@ export default function ProductMaintenancePage() {
                         name="image"
                         accept="image/jpeg,image/jpg,image/png,image/webp"
                         onChange={handleImageChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#FF6A3D] file:text-white hover:file:bg-[#FF5A2D] file:cursor-pointer"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[var(--admin-primary)] file:text-white hover:file:bg-[var(--admin-primary-hover)] file:cursor-pointer"
                       />
                       <p className="mt-1 text-xs text-gray-500">
                         Accepted formats: JPEG, PNG, WebP. Max size: 5 MB
@@ -1359,7 +1419,7 @@ export default function ProductMaintenancePage() {
                         name="status"
                         value={formData.status}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6A3D] focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[color:var(--admin-primary)] focus:border-transparent"
                       >
                         <option value="active">Active</option>
                         <option value="disabled">Disabled</option>

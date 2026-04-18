@@ -85,3 +85,16 @@ export function formatDeliveryAddressForDisplay(parts: ParsedDeliveryAddress): s
 
   return [streetLine, cityPinLine, state].filter(Boolean).join('\n')
 }
+
+export function resolveDisplayState(
+  stateName: string | null | undefined,
+  rawDeliveryAddress: string | null | undefined,
+  legacyState?: string | null
+): string {
+  const preferred = typeof stateName === 'string' ? stateName.trim() : ''
+  if (preferred) return preferred
+  const parsed = parseStoredDeliveryAddress(rawDeliveryAddress ?? '')
+  if (parsed.state) return parsed.state
+  const legacy = typeof legacyState === 'string' ? legacyState.trim() : ''
+  return legacy || 'N/A'
+}

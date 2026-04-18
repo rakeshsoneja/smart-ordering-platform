@@ -171,6 +171,12 @@ html {
 }
 
 @media print {
+  /* Admin (and similar): remove non-receipt UI from the print layout entirely.
+     Visibility-only hiding can still leave fixed modals / prior views affecting output. */
+  .no-print {
+    display: none !important;
+  }
+
   /* Step 1: Hide everything by default using visibility */
   body * {
     visibility: hidden;
