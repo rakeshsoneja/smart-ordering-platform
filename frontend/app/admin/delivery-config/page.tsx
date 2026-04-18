@@ -54,7 +54,8 @@ export default function DeliveryConfigPage() {
 
   // Handle form input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target
+    const { name, value, type } = e.target
+    const checked = e.target instanceof HTMLInputElement ? e.target.checked : false
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
