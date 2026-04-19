@@ -1,3 +1,5 @@
+'use client'
+
 import { parseStoredDeliveryAddress } from '@/lib/deliveryAddressFormat'
 
 export type ReceiptDeliveryAddressBlockProps = {
@@ -44,7 +46,7 @@ export default function ReceiptDeliveryAddressBlock({
   const stateLine = (stateDisplay ?? '').trim()
   const phoneLine = formatPhoneForReceipt(customerPhone)
 
-  const rootClass = ['text-sm sm:text-base text-gray-900', className].filter(Boolean).join(' ')
+  const rootClass = ['receipt-delivery-address-block text-sm sm:text-base', className].filter(Boolean).join(' ')
 
   return (
     <div className={rootClass}>

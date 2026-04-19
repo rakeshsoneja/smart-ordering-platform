@@ -8,11 +8,14 @@
   --background-end-rgb: 255, 255, 255;
 }
 
+/* OS dark theme: keep readable text on our always-light (white) app shell. Do not flip
+   --foreground-rgb to white while body background stays #ffffff — that caused inherited
+   text (e.g. Order Summary address) to render white-on-white on first paint. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --foreground-rgb: 31, 41, 55;
+    --background-start-rgb: 214, 219, 220;
+    --background-end-rgb: 255, 255, 255;
   }
 }
 
@@ -26,6 +29,13 @@ body {
 /* Use dark gray instead of pure black for text */
 .text-gray-900 {
   color: #1f2937;
+}
+
+/* Receipt / order-review address: force readable text on light cards. Prevents intermittent
+   inherited or UA colors when OS dark theme + white card (competes with utility load order). */
+.receipt-delivery-address-block,
+.receipt-delivery-address-block p {
+  color: #1f2937 !important;
 }
 
 @layer utilities {

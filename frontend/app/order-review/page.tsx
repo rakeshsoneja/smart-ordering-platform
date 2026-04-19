@@ -244,7 +244,10 @@ export default function OrderReviewPage() {
         <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
           <div className="order-2 md:order-1 md:pr-6 md:border-r md:border-gray-300">
             <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Delivery Details</h2>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div
+              className="bg-white rounded-xl border border-gray-200 p-4"
+              style={{ colorScheme: 'light', color: '#1f2937' }}
+            >
               <ReceiptDeliveryAddressBlock
                 customerName={reviewData.deliveryDetails.customerName}
                 customerPhone={reviewData.deliveryDetails.customerPhone}
