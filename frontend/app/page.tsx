@@ -28,8 +28,8 @@ interface Product {
   variants?: Variant[] // ADD THIS - variants array
 }
 
-const PRODUCT_FETCH_ATTEMPTS = 3
-const RETRY_DELAY_MS = 600
+const PRODUCT_FETCH_ATTEMPTS = 8
+const RETRY_DELAY_MS = 1200
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -75,7 +75,7 @@ export default function Home() {
 
         if (cancelled) return
         if (attempt < PRODUCT_FETCH_ATTEMPTS) {
-          await sleep(RETRY_DELAY_MS)
+          await sleep(RETRY_DELAY_MS * attempt)
         }
       }
 
