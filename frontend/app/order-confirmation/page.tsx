@@ -104,6 +104,7 @@ function OrderConfirmationContent() {
                      order.status === 'payment_pending' ? 'Payment Pending' :
                      order.status === 'payment_failed' ? 'Payment Failed' :
                      'Pending'
+  const showSmsNotice = false
 
   return (
     <div
@@ -168,7 +169,7 @@ function OrderConfirmationContent() {
           </div>
 
           {/* SMS Notification */}
-          {isPaid && (
+          {showSmsNotice && isPaid && (
             <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg">
               <p className="text-xs sm:text-sm text-blue-800">
                 📱 An SMS confirmation has been sent to {order.customerPhone}
