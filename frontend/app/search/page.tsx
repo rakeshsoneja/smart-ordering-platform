@@ -110,6 +110,10 @@ export default function SearchPage() {
         return 'Paid'
       case 'confirmed':
         return 'Confirmed'
+      case 'completed':
+        return 'Completed'
+      case 'cancelled':
+        return 'Cancelled'
       case 'payment_pending':
         return 'Payment Pending'
       case 'payment_failed':
@@ -120,9 +124,9 @@ export default function SearchPage() {
   }
 
   const getStatusColor = (status: string) => {
-    if (status === 'paid' || status === 'confirmed') {
+    if (status === 'paid' || status === 'confirmed' || status === 'completed') {
       return 'bg-green-100 text-green-800'
-    } else if (status === 'payment_failed') {
+    } else if (status === 'payment_failed' || status === 'cancelled') {
       return 'bg-red-100 text-red-800'
     } else {
       return 'bg-yellow-100 text-yellow-800'
