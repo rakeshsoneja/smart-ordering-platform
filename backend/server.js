@@ -15,6 +15,7 @@ const variantRoutes = require('./routes/variantRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const whatsAppWebhook = require('./whatsapp/whatsAppWebhook');
 const publicOrderRoutes = require('./routes/publicOrderRoutes');
+const configRoutes = require('./routes/configRoutes');
 const initSchema = require('./database/initSchema');
 
 /**
@@ -53,6 +54,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/config', configRoutes);
 app.use('/api/public', publicOrderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);

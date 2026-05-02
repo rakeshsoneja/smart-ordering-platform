@@ -1,19 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, ShoppingCart, Search, Menu } from 'lucide-react'
 import { appConfig } from '@/lib/config'
 import { getAppTheme } from '@/lib/theme'
+import axiosInstance from '@/lib/axiosConfig'
 import { useCart } from '@/context/cartContext'
 import AdminHamburgerMenu from './adminHamburgerMenu'
+
+type StoreConfigResponse = {
+  name?: string
+  logo_url?: string
+}
 
 export default function Header() {
   const pathname = usePathname()
   const { cartItems } = useCart()
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const [isHamburgerOpen, setIsHamburgerOpen] = useState(false)
+  const [storeConfig, setStoreConfig] = useState<StoreConfigResponse | null>(null)
 
   // Check if we're on an admin route
   const isAdminRoute = pathname?.startsWith('/admin') || false
@@ -29,6 +36,26 @@ export default function Header() {
   const appTheme = getAppTheme()
   const isSweetshopTheme = appConfig.themeKey?.trim().toLowerCase() === 'sweetshop'
 
+  useEffect(() => {
+    let cancelled = false
+    axiosInstance
+      .get<StoreConfigResponse>('/api/config')
+      .then((res) => {
+        if (!cancelled) setStoreConfig(res.data ?? {})
+      })
+      .catch(() => {
+        if (!cancelled) setStoreConfig(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const logoUrl =
+    storeConfig?.logo_url && String(storeConfig.logo_url).trim() !== ''
+      ? String(storeConfig.logo_url).trim()
+      : ''
+
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
@@ -40,15 +67,24 @@ export default function Header() {
                 href={isAdminRoute ? "/admin" : "/"}
                 className="touch-manipulation flex-shrink-0"
               >
-                <div className="relative w-10 h-10">
-                  {/* Outer solid white border */}
-                  <div className="absolute inset-0 rounded-full border-2 border-white"></div>
-                  {/* Inner dotted white border */}
-                  <div className="absolute inset-0.5 rounded-full border border-dotted border-white"></div>
-                  {/* Red/Coral circle background */}
-                  <div className="absolute inset-1 rounded-full bg-[#FF6B6B] flex items-center justify-center">
-                    <span className="text-white text-xl font-bold" style={{ fontFamily: 'cursive' }}>S</span>
-                  </div>
+                <div className="relative w-10 h-10 flex items-center justify-center">
+                  {logoUrl ? (
+                    <img
+                      src={logoUrl}
+                      alt={appConfig.shopName ? `${appConfig.shopName} logo` : 'Store logo'}
+                      className="logo-img"
+                    />
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 rounded-full border-2 border-white" />
+                      <div className="absolute inset-0.5 rounded-full border border-dotted border-white" />
+                      <div className="absolute inset-1 rounded-full bg-[#FF6B6B] flex items-center justify-center">
+                        <span className="logo text-white text-xl font-bold" style={{ fontFamily: 'cursive' }}>
+                          S
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </Link>
 

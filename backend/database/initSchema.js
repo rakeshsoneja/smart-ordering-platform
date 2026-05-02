@@ -129,6 +129,9 @@ const initSchema = async () => {
     // Run migration to convert inventory from variant-level to product-level
     const migrateInventoryToProductLevel = require('./migrateInventoryToProductLevel');
     await migrateInventoryToProductLevel();
+
+    const migrateStores = require('./migrateStores');
+    await migrateStores();
   } catch (error) {
     console.error('❌ Error initializing schema:', error);
     throw error;

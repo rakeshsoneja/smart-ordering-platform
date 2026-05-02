@@ -146,6 +146,14 @@ ADD COLUMN IF NOT EXISTS state_name VARCHAR(50);
 CREATE INDEX IF NOT EXISTS idx_delivery_config_state_active ON delivery_config(state_code, is_active);
 CREATE INDEX IF NOT EXISTS idx_orders_state_code ON orders(state_code);
 
+-- Stores (branding / future multi-store); no FKs yet
+CREATE TABLE IF NOT EXISTS stores (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    logo_url TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW()
+);
 
 
 
