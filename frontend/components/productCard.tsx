@@ -247,13 +247,13 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         isOutOfStock ? 'opacity-70' : 'hover:shadow-md lg:hover:shadow-lg'
       }`}
     >
-      {/* Product image: fixed canvas, contain + 92% scale — no crop, no distortion */}
-      <div className="relative w-full h-[180px] bg-white flex items-center justify-center overflow-hidden rounded-xl">
+      {/* Product image: gray-50 framed well, object-contain + scale — relative for OOS overlay positioning */}
+      <div className="relative w-full h-[180px] bg-gray-50 flex items-center justify-center overflow-hidden rounded-xl p-3 border border-gray-100">
         {hasUrlProductImage ? (
           <img
             src={product.image}
             alt={product.name}
-            className="max-w-full max-h-full object-contain sm:max-w-[92%] sm:max-h-[92%]"
+            className="object-contain max-w-full max-h-full scale-110 origin-center"
             onError={(e) => {
               // Fallback to emoji if image fails to load
               const target = e.target as HTMLImageElement
@@ -270,7 +270,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           {product.image && !product.image.startsWith('http') ? product.image : '🍬'}
         </span>
         
-        {/* Out of Stock — neutral veil over same h-[180px] white canvas as in-stock cards */}
+        {/* Out of Stock — neutral veil over same fixed image canvas */}
         {isOutOfStock && (
           <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none bg-black/35 transition-all duration-200">
             <span className="px-4 py-2 rounded-full bg-black/60 text-white text-xs lg:text-sm font-semibold tracking-[0.18em] uppercase shadow-md">
