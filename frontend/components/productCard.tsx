@@ -236,19 +236,24 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     setSelectedVariantId(variantId)
   }
 
+  const hasUrlProductImage = !!(
+    product.image &&
+    (product.image.startsWith('http://') || product.image.startsWith('https://'))
+  )
+
   return (
     <div
       className={`bg-white rounded-lg lg:rounded-xl shadow-sm transition-all duration-200 overflow-hidden flex flex-col border border-gray-100 ${
         isOutOfStock ? 'opacity-70' : 'hover:shadow-md lg:hover:shadow-lg'
       }`}
     >
-      {/* Product Image - Larger on Desktop */}
-      <div className="w-full h-32 lg:h-64 bg-gradient-to-br from-[#FFF8F0] to-[#FFE4C4] flex items-center justify-center relative overflow-hidden">
-        {product.image && (product.image.startsWith('http://') || product.image.startsWith('https://')) ? (
+      {/* Product image: fixed canvas, contain + 92% scale — no crop, no distortion */}
+      <div className="relative w-full h-[180px] bg-white flex items-center justify-center overflow-hidden rounded-xl">
+        {hasUrlProductImage ? (
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className="max-w-full max-h-full object-contain sm:max-w-[92%] sm:max-h-[92%]"
             onError={(e) => {
               // Fallback to emoji if image fails to load
               const target = e.target as HTMLImageElement
@@ -261,35 +266,14 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             }}
           />
         ) : null}
-        <span className={`text-5xl lg:text-7xl fallback-emoji ${product.image && (product.image.startsWith('http://') || product.image.startsWith('https://')) ? 'hidden' : 'flex'}`}>
+        <span className={`text-5xl lg:text-7xl fallback-emoji ${hasUrlProductImage ? 'hidden' : 'flex'}`}>
           {product.image && !product.image.startsWith('http') ? product.image : '🍬'}
         </span>
         
-        {/* Out of Stock Overlay - modern ecommerce style */}
+        {/* Out of Stock — neutral veil over same h-[180px] white canvas as in-stock cards */}
         {isOutOfStock && (
-          <div
-            className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none transition-all duration-200"
-            style={
-              isSweetshopTheme
-                ? {
-                    backgroundColor: 'rgba(46,125,50,0.1)',
-                    border: '1px solid #A5D6A7',
-                  }
-                : undefined
-            }
-          >
-            <span
-              className="px-4 py-2 rounded-full bg-black/60 text-white text-xs lg:text-sm font-semibold tracking-[0.18em] uppercase shadow-md"
-              style={
-                isSweetshopTheme
-                  ? {
-                      color: appTheme.textPrimary,
-                      backgroundColor: 'transparent',
-                      boxShadow: 'none',
-                    }
-                  : undefined
-              }
-            >
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none bg-black/35 transition-all duration-200">
+            <span className="px-4 py-2 rounded-full bg-black/60 text-white text-xs lg:text-sm font-semibold tracking-[0.18em] uppercase shadow-md">
               Out of stock
             </span>
           </div>
