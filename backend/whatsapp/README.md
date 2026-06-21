@@ -19,6 +19,12 @@ WHATSAPP_ACCESS_TOKEN=your_access_token_here
 WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id_here
 WHATSAPP_API_BASE_URL=https://graph.facebook.com/v18.0
 WHATSAPP_WEBHOOK_VERIFY_TOKEN=your_verify_token_here
+WHATSAPP_ORDER_TEMPLATE_NAME=order_payment_qr
+WHATSAPP_ORDER_TEMPLATE_LANGUAGE=en
+
+# Store details for order template (body {{3}} phone, {{4}} name)
+SHOP_NAME=Your Store Name
+SHOP_PHONE_NUMBER=+91 9876543210
 ```
 
 ## Setup Instructions

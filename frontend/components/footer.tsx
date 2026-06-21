@@ -49,7 +49,7 @@ export default function Footer({ className = '' }: FooterProps) {
           </div>
         </div>
         <div className="border-t border-gray-700 mt-4 sm:mt-6 pt-4 sm:pt-6 text-center text-xs sm:text-sm text-gray-400">
-          <p>&copy; 2024 {appConfig.shopName}. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {appConfig.shopName}. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -13,6 +13,10 @@ const whatsAppConfig = {
   phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
   apiBaseUrl: process.env.WHATSAPP_API_BASE_URL || 'https://graph.facebook.com/v18.0',
   webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '',
+  shopName: (process.env.SHOP_NAME || '').trim(),
+  shopPhoneNumber: (process.env.SHOP_PHONE_NUMBER || '').trim(),
+  orderTemplateName: (process.env.WHATSAPP_ORDER_TEMPLATE_NAME || 'order_payment_qr').trim(),
+  orderTemplateLanguage: (process.env.WHATSAPP_ORDER_TEMPLATE_LANGUAGE || 'en').trim(),
 };
 
 module.exports = whatsAppConfig;

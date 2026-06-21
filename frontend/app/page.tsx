@@ -30,6 +30,7 @@ interface Product {
 
 const PRODUCT_FETCH_ATTEMPTS = 8
 const RETRY_DELAY_MS = 1200
+const DEFAULT_HOME_SUBTITLE = 'Quality products delivered fresh to your door'
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -44,6 +45,10 @@ export default function Home() {
   const themeKey = appConfig.themeKey?.trim().toLowerCase()
   const isSweetshopTheme = themeKey === 'sweetshop'
   const theme = getAppTheme()
+  const homeSubtitle =
+    (process.env.NEXT_PUBLIC_SHOP_DESCRIPTION || '').trim()
+      ? appConfig.shopDescription
+      : DEFAULT_HOME_SUBTITLE
 
   // Fetch products with retries (helps flaky mobile / cold API on first paint)
   useEffect(() => {
@@ -105,14 +110,14 @@ export default function Home() {
         {/* Products Section Header */}
         <section className="mb-4 lg:mb-6">
           <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
-            Fresh Products
+            {appConfig.shopTagline}
           </h2>
           <p
             className="text-sm lg:text-base text-gray-600"
             style={isSweetshopTheme ? { color: theme.textSecondary } : undefined}
           >
-            Quality products delivered fresh to your door
-        </p>
+            {homeSubtitle}
+          </p>
         </section>
 
         {/* Category Selector */}

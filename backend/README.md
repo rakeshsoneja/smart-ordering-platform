@@ -74,9 +74,14 @@ See `.env.example` for all required environment variables.
 
 - **ORDER_LINK_SECRET** – Secret used to sign JWT for the WhatsApp "Order Details" link. Generate a secure random string (e.g. `openssl rand -base64 32`). Do not expose to the frontend. Required for secure order-details links.
 
+### WhatsApp order confirmation template
+- **WHATSAPP_ORDER_TEMPLATE_NAME** – Meta-approved template name (default: `order_payment_qr`).
+- **WHATSAPP_ORDER_TEMPLATE_LANGUAGE** – Template language code (default: `en`).
+
 ### UPI Payment QR (WhatsApp order confirmation)
 - **SHOP_UPI_ID** – Your UPI ID for receiving payments (e.g. `shopname@okaxis`, `store@paytm`).
-- **SHOP_NAME** – Display name shown in UPI apps (e.g. `Ram Grocery Store`).
+- **SHOP_NAME** – Store display name (UPI QR payee name and WhatsApp template body parameter {{4}}).
+- **SHOP_PHONE_NUMBER** – Store contact phone (WhatsApp template body parameter {{3}}). Match your frontend `NEXT_PUBLIC_SHOP_PHONE_NUMBER` if used there.
 - **UPI_QR_IMAGE_URL** – Public URL of the UPI QR image (Cloudinary). Generate once via `npm run generate:upi-qr` and add the printed URL to `.env`.
 
 ## Security Notes

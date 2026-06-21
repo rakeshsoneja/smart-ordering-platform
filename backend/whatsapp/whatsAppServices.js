@@ -14,6 +14,7 @@ const { normalizePhone } = require('../utils/phoneUtils');
  * @param {number} orderId - Order ID
  * @param {string|null} [secureToken] - Optional JWT for "Order Details" button URL (order-details page). Do not pass order_id in URL.
  * @param {string|null} [qrImageUrl] - Optional UPI QR image URL (e.g. from Cloudinary) for template header.
+ * Template body: {{1}} customerName, {{2}} orderId, {{3}} store phone, {{4}} store name (SHOP_PHONE_NUMBER, SHOP_NAME).
  * @returns {Promise<void>}
  */
 const sendOrderConfirmationWhatsApp = async (phoneNumber, customerName, orderId, secureToken = null, qrImageUrl = null) => {
@@ -45,6 +46,13 @@ const sendOrderConfirmationWhatsApp = async (phoneNumber, customerName, orderId,
     return;
   }
 
+  const storePhoneNumber = whatsAppConfig.shopPhoneNumber;
+  const storeName = whatsAppConfig.shopName;
+  if (!storePhoneNumber || !storeName) {
+    console.error('❌ WhatsApp: Missing SHOP_PHONE_NUMBER or SHOP_NAME in backend .env.');
+    return;
+  }
+
   try {
     // Prepare request URL
     const url = `${whatsAppConfig.apiBaseUrl}/${whatsAppConfig.phoneNumberId}/messages`;
@@ -64,6 +72,8 @@ const sendOrderConfirmationWhatsApp = async (phoneNumber, customerName, orderId,
       parameters: [
         { type: 'text', text: customerName },
         { type: 'text', text: orderId.toString() },
+        { type: 'text', text: storePhoneNumber },
+        { type: 'text', text: storeName },
       ],
     });
 
@@ -83,8 +93,8 @@ const sendOrderConfirmationWhatsApp = async (phoneNumber, customerName, orderId,
       to: toNumber,
       type: 'template',
       template: {
-        name: 'order_payment_qr',
-        language: { code: 'en' },
+        name: whatsAppConfig.orderTemplateName,
+        language: { code: whatsAppConfig.orderTemplateLanguage },
         components,
       },
     };
