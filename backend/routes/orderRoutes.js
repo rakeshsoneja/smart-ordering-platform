@@ -9,6 +9,7 @@ const { deductInventoryForOrder } = require('../models/inventoryModel');
 const { calculateDeliveryForCart } = require('../services/deliveryService');
 const { sendOrderConfirmationWhatsApp } = require('../whatsapp/whatsAppServices');
 const whatsAppConfig = require('../whatsapp/whatsAppConfig');
+const { isStateCodeAllowed } = require('../config/appConfig');
 const { normalizePhone } = require('../utils/phoneUtils');
 
 /**
@@ -41,6 +42,13 @@ router.post('/', validateRequest(orderValidationRules), async (req, res, next) =
         : null;
     const normalizedStateName =
       typeof stateName === 'string' && stateName.trim() !== '' ? stateName.trim() : null;
+
+    if (normalizedStateCode && !isStateCodeAllowed(normalizedStateCode)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Delivery is not available for the selected state',
+      });
+    }
 
     // Normalize phone to E.164 (+countryCode+digits) for SMS and WhatsApp; same value works for both
     const normalizedPhone = normalizePhone(customerPhone);
@@ -289,6 +297,13 @@ router.post('/calculate-delivery', async (req, res, next) => {
       typeof stateCode === 'string' && stateCode.trim() !== ''
         ? stateCode.trim().toUpperCase()
         : null;
+
+    if (normalizedStateCode && !isStateCodeAllowed(normalizedStateCode)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Delivery is not available for the selected state',
+      });
+    }
 
     if (!cartItems || !Array.isArray(cartItems)) {
       return res.status(400).json({

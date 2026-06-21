@@ -4,9 +4,14 @@ import { useState, useEffect, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/cartContext'
 import { buildStoredDeliveryAddress } from '@/lib/deliveryAddressFormat'
+import { appConfig } from '@/lib/config'
 import { getAppTheme } from '@/lib/theme'
-import { indianStates, getStateByCode } from '@/constants/states'
+import { getCheckoutStates, getStateByCode } from '@/constants/states'
 import { SearchableSelect } from '@/components/SearchableSelect'
+
+const checkoutStates = getCheckoutStates(
+  appConfig.allowedStateCodes.length > 0 ? appConfig.allowedStateCodes : undefined
+)
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -36,6 +41,14 @@ export default function CheckoutPage() {
   } as CSSProperties
 
   const itemTotal = getTotalAmount()
+
+  useEffect(() => {
+    const defaultCode = appConfig.defaultStateCode
+    if (!defaultCode) return
+    const isAllowed = checkoutStates.some((state) => state.code === defaultCode)
+    if (!isAllowed) return
+    setFormData((prev) => (prev.state ? prev : { ...prev, state: defaultCode }))
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -86,7 +99,7 @@ export default function CheckoutPage() {
     }
 
     const selectedState = getStateByCode(formData.state)
-    if (!selectedState) {
+    if (!selectedState || !checkoutStates.some((state) => state.code === selectedState.code)) {
       newErrors.state = 'State is required'
     }
 
@@ -347,7 +360,7 @@ export default function CheckoutPage() {
                     id="state"
                     name="state"
                     autoComplete="address-level1"
-                    options={indianStates}
+                    options={checkoutStates}
                     value={formData.state}
                     onChange={(code) => {
                       setFormData((prev) => ({ ...prev, state: code }))

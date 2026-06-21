@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getInventoryStatus, deductInventoryAtomically } = require('../models/inventoryModel');
+const { getInventoryStatus, deductInventoryAtomically, resolveItemGrams } = require('../models/inventoryModel');
 const { getVariantById } = require('../models/variantModel');
 const { getProductById } = require('../models/productModel');
 
@@ -31,7 +31,7 @@ router.get('/', (req, res) => {
  */
 router.post('/validate-inventory', async (req, res, next) => {
   try {
-    const { productId, variantId, quantity, currentCartItems = [] } = req.body;
+    const { productId, variantId, quantity, currentCartItems = [], variantWeightGrams: cartVariantWeightGrams } = req.body;
 
     if (!productId || !quantity) {
       return res.status(400).json({
@@ -49,24 +49,17 @@ router.post('/validate-inventory', async (req, res, next) => {
 
     // Get variant weight if variant exists
     let variantWeightGrams = null;
+    let variantName = null;
     if (variantId) {
       const variant = await getVariantById(variantId);
       if (variant) {
         variantWeightGrams = variant.variant_weight_grams;
+        variantName = variant.variant_name;
       }
     }
 
     // Calculate requested quantity in grams for the NEW/updated item
-    // requestedQuantityGrams = variantWeightGrams × quantity
-    let newItemRequestedGrams = 0;
-    if (variantId && variantWeightGrams) {
-      // For variant-based products, multiply quantity by variant weight
-      newItemRequestedGrams = quantity * variantWeightGrams;
-    } else {
-      // Legacy products without variants - quantity is already in base units
-      // For backward compatibility, assume quantity is in grams
-      newItemRequestedGrams = quantity;
-    }
+    let newItemRequestedGrams = resolveItemGrams(quantity, variantWeightGrams, cartVariantWeightGrams, variantName);
 
     // Calculate total requested grams across ALL variants of the same product in cart
     // This includes:
@@ -86,11 +79,10 @@ router.post('/validate-inventory', async (req, res, next) => {
         let itemGrams = 0;
         
         if (cartItem.variantId) {
-          // Get variant weight
           const existingVariant = await getVariantById(cartItem.variantId);
-          if (existingVariant && existingVariant.variant_weight_grams) {
-            itemGrams = cartItem.quantity * existingVariant.variant_weight_grams;
-          }
+          const dbWeight = existingVariant?.variant_weight_grams ?? null;
+          const name = existingVariant?.variant_name ?? cartItem.variantName ?? null;
+          itemGrams = resolveItemGrams(cartItem.quantity, dbWeight, cartItem.variantWeightGrams, name);
         } else {
           // Legacy product without variant - assume quantity is in grams
           itemGrams = cartItem.quantity;

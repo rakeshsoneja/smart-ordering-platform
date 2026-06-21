@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getAllOrders, getOrderById, updateOrderStatus } = require('../models/orderModel');
+const { restoreInventoryForOrder } = require('../models/inventoryModel');
 
 /**
  * Admin Order Routes
@@ -133,6 +134,29 @@ router.put('/:id/status', async (req, res, next) => {
         success: false,
         error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
       });
+    }
+
+    const order = await getOrderById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+      });
+    }
+
+    // COD: stock deducted at confirmed — restore only on confirmed → cancelled
+    if (status === 'cancelled' && order.status === 'confirmed') {
+      const cartItems = order.cart_items;
+      const inventoryRestore = await restoreInventoryForOrder(cartItems);
+
+      if (!inventoryRestore.success) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to restore inventory for cancelled order',
+          failedItems: inventoryRestore.failedItems,
+        });
+      }
     }
 
     const updatedOrder = await updateOrderStatus(orderId, status);

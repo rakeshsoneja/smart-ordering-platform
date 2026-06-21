@@ -47,3 +47,10 @@ export function getStateByCode(stateCode: string | null | undefined): IndianStat
   const normalized = stateCode.trim().toUpperCase()
   return indianStates.find((s) => s.code === normalized) || null
 }
+
+/** States shown in checkout. When allowlist is empty, returns all states. */
+export function getCheckoutStates(allowedCodes?: string[]): IndianState[] {
+  if (!allowedCodes?.length) return indianStates
+  const allowed = new Set(allowedCodes.map((code) => code.trim().toUpperCase()))
+  return indianStates.filter((state) => allowed.has(state.code))
+}

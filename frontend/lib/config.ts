@@ -9,6 +9,15 @@ function trimEnv(value: string | undefined): string {
   return (value || '').trim()
 }
 
+/** Comma-separated state codes, e.g. `TN` or `TN,KA`. Empty = all states in checkout. */
+function parseStateCodes(value: string | undefined): string[] {
+  if (!value?.trim()) return []
+  return value
+    .split(',')
+    .map((code) => code.trim().toUpperCase())
+    .filter(Boolean)
+}
+
 export const appConfig = {
   shopName: process.env.NEXT_PUBLIC_SHOP_NAME || 'Siva Ganapathy Sweets',
   themeKey: process.env.NEXT_PUBLIC_THEME_KEY || 'default',
@@ -24,6 +33,11 @@ export const appConfig = {
   shopCity: trimEnv(process.env.NEXT_PUBLIC_SHOP_CITY),
   shopState: trimEnv(process.env.NEXT_PUBLIC_SHOP_STATE),
   shopPincode: trimEnv(process.env.NEXT_PUBLIC_SHOP_PINCODE),
+
+  /** Checkout state dropdown allowlist. Empty = show all Indian states. */
+  allowedStateCodes: parseStateCodes(process.env.NEXT_PUBLIC_ALLOWED_STATE_CODES),
+  /** Pre-selected state on checkout when valid and in allowlist. */
+  defaultStateCode: trimEnv(process.env.NEXT_PUBLIC_DEFAULT_STATE_CODE).toUpperCase(),
 }
 
 /** Single line: `City - Pincode, State` (only defined parts included). */

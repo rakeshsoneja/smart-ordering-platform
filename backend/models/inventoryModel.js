@@ -1,5 +1,25 @@
 const { query } = require('../database/dbConnection');
 
+/** Parse leading number from variant label e.g. "250g" → 250 when weight column is unset. */
+const parseGramsFromVariantName = (variantName) => {
+  if (!variantName || typeof variantName !== 'string') return null;
+  const match = variantName.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const n = Number(match[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/** Grams for a line item: DB weight → cart snapshot → parse variant name. */
+const resolveItemGrams = (quantity, dbVariantWeightGrams, cartVariantWeightGrams, variantName = null) => {
+  const parsedFromName = parseGramsFromVariantName(variantName);
+  const weight = dbVariantWeightGrams ?? cartVariantWeightGrams ?? parsedFromName;
+  const n = weight != null && weight !== '' ? Number(weight) : NaN;
+  if (!Number.isNaN(n) && n > 0) {
+    return quantity * n;
+  }
+  return quantity;
+};
+
 /**
  * Inventory Model - Handles all database operations for product inventory
  * Inventory is maintained at PRODUCT level (not variant level)
@@ -124,6 +144,38 @@ const deductInventoryAtomically = async (productId, requestedQuantityGrams) => {
   };
 };
 
+// Atomically restore inventory (with row-level locking)
+const restoreInventoryAtomically = async (productId, quantityGrams) => {
+  const lockQuery = `
+    SELECT * FROM product_inventory
+    WHERE product_id = $1
+    FOR UPDATE
+  `;
+
+  const lockResult = await query(lockQuery, [productId]);
+
+  if (lockResult.rows.length === 0) {
+    // No inventory record — deduct was a no-op for this product
+    return { success: true, availableQuantityGrams: null };
+  }
+
+  const updateQuery = `
+    UPDATE product_inventory
+    SET available_quantity_grams = available_quantity_grams + $1,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE product_id = $2
+    RETURNING *
+  `;
+
+  const updateResult = await query(updateQuery, [quantityGrams, productId]);
+
+  return {
+    success: true,
+    availableQuantityGrams: parseInt(updateResult.rows[0].available_quantity_grams),
+    inventory: updateResult.rows[0],
+  };
+};
+
 // Deduct inventory for multiple items atomically (within a transaction)
 // Inventory is maintained at PRODUCT LEVEL (shared across all variants)
 // Groups cart items by product_id and calculates total grams per product
@@ -141,19 +193,21 @@ const deductInventoryForOrder = async (cartItems) => {
     
     for (const item of cartItems) {
       const { variantId, quantity } = item;
+      const cartVariantWeightGrams = item.variantWeightGrams ?? null;
       
       // Get product ID
       let productId = item.productId || item.id;
       
       // Get variant weight if variant exists
       let variantWeightGrams = null;
+      let variantName = item.variantName ?? null;
       if (variantId) {
-        // Get product ID and weight from variant
-        const variantQuery = 'SELECT variant_weight_grams, product_id FROM product_variant WHERE variant_id = $1';
+        const variantQuery = 'SELECT variant_weight_grams, product_id, variant_name FROM product_variant WHERE variant_id = $1';
         const variantResult = await query(variantQuery, [variantId]);
         if (variantResult.rows.length > 0) {
           productId = variantResult.rows[0].product_id;
           variantWeightGrams = variantResult.rows[0].variant_weight_grams;
+          variantName = variantResult.rows[0].variant_name ?? variantName;
         } else {
           // Variant not found - add to failed items
           failedItems.push({
@@ -187,6 +241,8 @@ const deductInventoryForOrder = async (cartItems) => {
         variantId,
         quantity,
         variantWeightGrams,
+        cartVariantWeightGrams,
+        variantName,
       });
     }
 
@@ -203,16 +259,10 @@ const deductInventoryForOrder = async (cartItems) => {
       
       // Sum up grams from all variants of this product
       for (const item of productItems) {
-        const { variantWeightGrams, quantity } = item;
-        
-        if (variantWeightGrams) {
-          // For variant-based products, multiply quantity by variant weight
-          totalRequestedGrams += quantity * variantWeightGrams;
-        } else {
-          // Legacy products without variants - quantity is already in base units
-          // For backward compatibility, assume quantity is in grams
-          totalRequestedGrams += quantity;
-        }
+        const { variantWeightGrams, quantity, cartVariantWeightGrams, variantName } = item;
+
+        const itemGrams = resolveItemGrams(quantity, variantWeightGrams, cartVariantWeightGrams, variantName);
+        totalRequestedGrams += itemGrams;
       }
 
       // Deduct total grams for this product atomically
@@ -250,6 +300,90 @@ const deductInventoryForOrder = async (cartItems) => {
   }
 };
 
+// Restore inventory for a cancelled order (confirmed → cancelled only at call site)
+// Mirrors deductInventoryForOrder: groups by product and adds grams back
+const restoreInventoryForOrder = async (cartItems) => {
+  await query('BEGIN');
+
+  try {
+    const failedItems = [];
+    const itemsByProduct = {};
+
+    for (const item of cartItems) {
+      const { variantId, quantity } = item;
+      const cartVariantWeightGrams = item.variantWeightGrams ?? null;
+      const cartVariantName = item.variantName ?? null;
+
+      let productId = item.productId || item.id;
+
+      let variantWeightGrams = null;
+      let variantName = cartVariantName;
+      if (variantId) {
+        const variantQuery = 'SELECT variant_weight_grams, product_id, variant_name FROM product_variant WHERE variant_id = $1';
+        const variantResult = await query(variantQuery, [variantId]);
+        if (variantResult.rows.length > 0) {
+          productId = variantResult.rows[0].product_id;
+          variantWeightGrams = variantResult.rows[0].variant_weight_grams;
+          variantName = variantResult.rows[0].variant_name ?? cartVariantName;
+        } else {
+          failedItems.push({
+            productId: null,
+            variantId,
+            requestedQuantityGrams: 0,
+            availableQuantityGrams: 0,
+          });
+          continue;
+        }
+      }
+
+      if (!productId) {
+        failedItems.push({
+          productId: null,
+          variantId,
+          requestedQuantityGrams: 0,
+          availableQuantityGrams: 0,
+        });
+        continue;
+      }
+
+      if (!itemsByProduct[productId]) {
+        itemsByProduct[productId] = [];
+      }
+
+      itemsByProduct[productId].push({
+        variantId,
+        quantity,
+        variantWeightGrams,
+        cartVariantWeightGrams,
+        variantName,
+      });
+    }
+
+    if (failedItems.length > 0) {
+      await query('ROLLBACK');
+      return { success: false, failedItems };
+    }
+
+    for (const productId in itemsByProduct) {
+      const productItems = itemsByProduct[productId];
+      let totalGrams = 0;
+
+      for (const item of productItems) {
+        const { variantWeightGrams, quantity, cartVariantWeightGrams, variantName } = item;
+        totalGrams += resolveItemGrams(quantity, variantWeightGrams, cartVariantWeightGrams, variantName);
+      }
+
+      await restoreInventoryAtomically(parseInt(productId), totalGrams);
+    }
+
+    await query('COMMIT');
+    return { success: true };
+  } catch (error) {
+    await query('ROLLBACK');
+    throw error;
+  }
+};
+
 // Delete inventory record
 const deleteInventory = async (inventoryId) => {
   const deleteQuery = 'DELETE FROM product_inventory WHERE inventory_id = $1 RETURNING *';
@@ -281,6 +415,9 @@ module.exports = {
   updateInventoryQuantity,
   deductInventoryAtomically,
   deductInventoryForOrder,
+  restoreInventoryForOrder,
+  resolveItemGrams,
+  parseGramsFromVariantName,
   deleteInventory,
   getInventoryStatus,
 };

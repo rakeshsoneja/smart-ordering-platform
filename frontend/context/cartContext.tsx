@@ -126,13 +126,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             productId: item.id,
             variantId: item.variantId || null,
             quantity: item.quantity,
+            variantWeightGrams: item.variantWeightGrams ?? null,
+            variantName: item.variantName ?? null,
           }))
 
         const response = await axiosInstance.post('/api/cart/validate-inventory', {
           productId: product.id,
           variantId: product.variantId || null,
           quantity: newQuantity,
-          currentCartItems: currentCartItemsForProduct, // Send current cart items for same product
+          variantWeightGrams: product.variantWeightGrams ?? null,
+          variantName: product.variantName ?? null,
+          currentCartItems: currentCartItemsForProduct,
         })
 
         if (!response.data.success || !response.data.available) {
@@ -242,14 +246,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           .map(item => ({
             productId: item.id,
             variantId: item.variantId || null,
-            quantity: item.id === productId && item.variantId === variantId ? quantity : item.quantity, // Use new quantity for this item, existing for others
+            quantity: item.id === productId && item.variantId === variantId ? quantity : item.quantity,
+            variantWeightGrams: item.variantWeightGrams ?? null,
+            variantName: item.variantName ?? null,
           }))
 
         const response = await axiosInstance.post('/api/cart/validate-inventory', {
           productId,
           variantId: variantId || null,
           quantity,
-          currentCartItems: currentCartItemsForProduct, // Send current cart items for same product
+          variantWeightGrams: item.variantWeightGrams ?? null,
+          variantName: item.variantName ?? null,
+          currentCartItems: currentCartItemsForProduct,
         })
 
         if (!response.data.success || !response.data.available) {
