@@ -43,7 +43,7 @@ export default function Footer({ className = '' }: FooterProps) {
                 Phone: <a href={`tel:${appConfig.shopPhoneNumber.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{appConfig.shopPhoneNumber}</a>
               </p>
               <p>
-                Email: <a href="mailto:info@sweetshop.com" className="hover:text-white transition-colors">info@sweetshop.com</a>
+                Email: <a href={`mailto:${appConfig.shopEmail}`} className="hover:text-white transition-colors">{appConfig.shopEmail}</a>
               </p>
             </div>
           </div>

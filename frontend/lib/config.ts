@@ -17,6 +17,7 @@ export const appConfig = {
     process.env.NEXT_PUBLIC_SHOP_DESCRIPTION ||
     'Your one-stop destination for delicious sweets and savories.',
   shopPhoneNumber: process.env.NEXT_PUBLIC_SHOP_PHONE_NUMBER || '+91 8667377257',
+  shopEmail: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'info@sweetshop.com',
 
   shopAddressLine1: trimEnv(process.env.NEXT_PUBLIC_SHOP_ADDRESS_LINE_1),
   shopAddressLine2: trimEnv(process.env.NEXT_PUBLIC_SHOP_ADDRESS_LINE_2),
