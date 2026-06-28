@@ -18,6 +18,11 @@ function parseStateCodes(value: string | undefined): string[] {
     .filter(Boolean)
 }
 
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const n = parseInt(String(value ?? '').trim(), 10)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
 export const appConfig = {
   shopName: process.env.NEXT_PUBLIC_SHOP_NAME || 'Siva Ganapathy Sweets',
   themeKey: process.env.NEXT_PUBLIC_THEME_KEY || 'default',
@@ -38,6 +43,16 @@ export const appConfig = {
   allowedStateCodes: parseStateCodes(process.env.NEXT_PUBLIC_ALLOWED_STATE_CODES),
   /** Pre-selected state on checkout when valid and in allowlist. */
   defaultStateCode: trimEnv(process.env.NEXT_PUBLIC_DEFAULT_STATE_CODE).toUpperCase(),
+
+  /** Label for delivery/packing line in order summary and receipts. */
+  deliveryChargeLabel:
+    trimEnv(process.env.NEXT_PUBLIC_DELIVERY_CHARGE_LABEL) || 'Delivery Charge',
+
+  /** Print receipt only: packed items consumption notice (days). */
+  receiptConsumptionDays: parsePositiveInt(
+    process.env.NEXT_PUBLIC_RECEIPT_CONSUMPTION_DAYS,
+    7
+  ),
 }
 
 /** Single line: `City - Pincode, State` (only defined parts included). */

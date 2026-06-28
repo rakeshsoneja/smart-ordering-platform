@@ -147,7 +147,7 @@ export default function PrintReceipt({ order, className = '' }: PrintReceiptProp
                 <span className="text-sm font-semibold text-gray-900">₹{order.itemTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-300">
-                <span className="text-sm font-semibold text-gray-900">Delivery Charge:</span>
+                <span className="text-sm font-semibold text-gray-900">{appConfig.deliveryChargeLabel}:</span>
                 <span className="text-sm font-semibold text-gray-900">₹{order.deliveryCharge.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center pt-2">
@@ -167,7 +167,7 @@ export default function PrintReceipt({ order, className = '' }: PrintReceiptProp
         {/* 5. Note Section */}
         <div className="mt-6 pt-4 border-t-2 border-gray-900">
           <p className="text-xs text-gray-700 italic">
-            Note: Packed items to be consumed within 15 days from the packed date
+            Note: Packed items to be consumed within {appConfig.receiptConsumptionDays} days from the packed date
           </p>
         </div>
       </div>

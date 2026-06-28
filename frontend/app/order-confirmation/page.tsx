@@ -140,7 +140,7 @@ function OrderConfirmationContent() {
               </div>
               {deliveryCharge > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Delivery Charge:</span>
+                  <span className="text-gray-700">{appConfig.deliveryChargeLabel}:</span>
                   <span className="font-semibold text-gray-800">₹{deliveryCharge.toFixed(2)}</span>
                 </div>
               )}

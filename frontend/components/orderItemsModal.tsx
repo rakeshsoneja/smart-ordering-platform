@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import { X, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { formatDeliveryAddressForDisplay, parseStoredDeliveryAddress } from '@/lib/deliveryAddressFormat'
+import { appConfig } from '@/lib/config'
 import { getAppTheme, type AppTheme } from '@/lib/theme'
 
 interface OrderItemsModalProps {
@@ -181,7 +182,7 @@ export default function OrderItemsModal({ order, onClose }: OrderItemsModalProps
                 )}
                 {deliveryCharge > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-base text-gray-700">Delivery Charge</span>
+                    <span className="text-base text-gray-700">{appConfig.deliveryChargeLabel}</span>
                     <span className="text-base font-semibold text-gray-900">₹{deliveryCharge.toFixed(2)}</span>
                   </div>
                 )}

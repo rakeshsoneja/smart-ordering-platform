@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Eye, ChevronDown, X, AlertCircle, CheckCircle2, Clock, XCircle, ShoppingBag, Printer } from 'lucide-react'
 import axiosInstance from '@/lib/axiosConfig'
+import { appConfig } from '@/lib/config'
 import PrintReceipt from '@/components/printReceipt'
 import {
   formatDeliveryAddressForDisplay,
@@ -508,7 +509,7 @@ export default function OrderMaintenancePage() {
                       {/* Only show delivery charge if it exists and > 0 */}
                       {selectedOrder.deliveryCharge !== undefined && selectedOrder.deliveryCharge > 0 && (
                         <div className="flex justify-between items-center">
-                          <span className="text-base text-gray-700">Delivery Charge</span>
+                          <span className="text-base text-gray-700">{appConfig.deliveryChargeLabel}</span>
                           <span className="text-base font-semibold text-gray-900">₹{selectedOrder.deliveryCharge.toFixed(2)}</span>
                         </div>
                       )}

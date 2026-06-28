@@ -305,7 +305,7 @@ export default function OrderReviewPage() {
                 <span className="text-base sm:text-lg text-gray-800 font-semibold">₹ {subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-base sm:text-lg text-gray-700">Delivery Charge:</span>
+                <span className="text-base sm:text-lg text-gray-700">{appConfig.deliveryChargeLabel}:</span>
                 <span className="text-base sm:text-lg text-gray-800 font-semibold">
                   {deliveryLoading ? 'Calculating...' : `₹ ${deliveryCharge.toFixed(2)}`}
                 </span>
